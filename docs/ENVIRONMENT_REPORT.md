@@ -1,0 +1,28 @@
+﻿# Company Vision - Environment Audit
+- PROJECT: D:\Projects\company-vision
+- DATE: 2026-10-29 13:10:50
+- OS: Microsoft Windows 11 Pro
+- OS Version: 10.0.26300
+- Architecture: 64-bit
+- PY Launcher: Python 3.12.10
+- Python 3.12: Python 3.12.10
+- Installed Pythons: -V:3.12 *        C:\Users\Foolad VFX\AppData\Local\Programs\Python\Python312\python.exe
+ -V:3.10          C:\Users\Foolad VFX\AppData\Local\Programs\Python\Python310\python.exe
+- Git: git version 2.56.0.windows.2
+- Git Branch: master
+- Git Repository: D:/Projects/company-vision
+- VS Code: 1.144.0
+- Python Extension: 1
+- CPU: Intel(R) Core(TM) i7-14700K
+- CPU Cores: 20
+- Logical Processors: 28
+- Total RAM (GB): 63.75
+- GPU: NVIDIA GeForce RTX 4070 SUPER
+- GPU: Intel(R) UHD Graphics
+- NVIDIA-SMI: NVIDIA GeForce RTX 4070 SUPER, 12282 MiB, 610.88
+- D Drive Free (GB): 300.99
+- DOC PROJECT_SCOPE.md: True
+- DOC ARCHITECTURE.md: True
+- DOC WORKFLOW.md: True
+- DOC DECISIONS.md: True
+- DOC PROGRESS.md: True
