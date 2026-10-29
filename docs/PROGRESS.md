@@ -18,3 +18,14 @@ node_1_0:
 
 node_1_1:
   status: TODO
+
+last_approved_node: "1.2"
+next_node: "1.3"
+completed_nodes: 3
+total_nodes: 42
+
+node_1_2:
+  status: PASS
+  approved_date: "2026-10-29"
+  acceptance_criteria: "8/8"
+  evidence: "User-confirmed checks"
