@@ -29,3 +29,9 @@ node_1_2:
   approved_date: "2026-10-29"
   acceptance_criteria: "8/8"
   evidence: "User-confirmed checks"
+
+Last approved node: 1.3
+Current node: 1.4
+Current status: IN_PROGRESS
+Next node: 2.1
+Completed nodes: 4/42
