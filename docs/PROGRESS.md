@@ -35,3 +35,27 @@ Current node: 1.4
 Current status: IN_PROGRESS
 Next node: 2.1
 Completed nodes: 4/42
+
+
+last_approved_node: "1.4"
+current_node: null
+next_node: "2.1"
+
+completed_nodes: 5
+total_nodes: 42
+
+phase_1:
+  status: PASS
+  completed_nodes: 5
+
+node_1_4:
+  status: PASS
+  acceptance_criteria: "10/10"
+  pytest: "13 passed"
+  smoke_test: PASS
+  ruff: PASS
+  git: CLEAN
+  evidence: "User-confirmed tests"
+
+node_2_1:
+  status: TODO
