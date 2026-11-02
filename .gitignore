@@ -1,38 +1,35 @@
-﻿# Python
+﻿# Python environment
 .venv/
 venv/
+env/
+
+# Python cache
 __pycache__/
 *.py[cod]
-*.egg-info/
-build/
-dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# Environment and credentials
+# Secrets and environment variables
 .env
 .env.*
 !.env.example
-*.pem
-*.key
 
-# Editors
-.vscode/
+# IDE settings
 .idea/
+.vscode/
 
-# Tests and caches
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# Models and private video data
-/models/
-/data/
-
-# Local outputs
-/logs/
+# Logs
 *.log
+logs/
 
-# OS
+# Model weights and generated outputs
+*.pt
+*.pth
+*.onnx
+runs/
+outputs/
+
+# Operating system files
 .DS_Store
 Thumbs.db
