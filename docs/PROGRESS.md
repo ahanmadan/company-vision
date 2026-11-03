@@ -100,3 +100,25 @@ Node 2.5: TODO
 Last Approved Node: 2.3
 Current Node: 2.4
 Next Node: 2.5
+
+Company Vision v1.0
+
+Phase 1: PASS
+
+Phase 2:
+  Node 2.1: PASS
+  Node 2.2: SOFTWARE PASS / HARDWARE DEFERRED
+  Node 2.3: SOFTWARE PASS / RTSP DEFERRED
+  Node 2.4: SOFTWARE PASS / REAL NETWORK RECOVERY DEFERRED
+  Node 2.5: IN_PROGRESS
+
+Last Approved Node: 2.4
+Current Node: 2.5
+Next Phase: 3
+
+Open Validation Items:
+  - Physical webcam test
+  - Company RTSP camera connection
+  - RTSP disconnection/reconnection
+  - Real-time latency
+  - Camera codec compatibility
