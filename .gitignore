@@ -33,3 +33,5 @@ outputs/
 # Operating system files
 .DS_Store
 Thumbs.db
+# Local video samples and outputs
+/data/

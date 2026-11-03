@@ -59,3 +59,17 @@ node_1_4:
 
 node_2_1:
   status: TODO
+
+
+Project: Company Vision
+Version: 1.0
+
+Phase 1: PASS
+Current Phase: 2
+
+Last Approved Node: 1.4
+Current Node: 2.1
+Current Status: IN_PROGRESS
+Next Node: 2.2
+
+Completed Nodes: 5 / 42
