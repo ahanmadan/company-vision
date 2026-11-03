@@ -148,3 +148,29 @@ Deferred:
   - Real RTSP recovery test
   - Human pose evaluation with real sample
   - Side-profile visibility evaluation
+
+
+  Company Vision v1.0
+
+Phase 1: PASS
+
+Phase 2:
+  Status: SOFTWARE COMPLETE
+  Hardware Validation: DEFERRED
+
+Phase 3:
+  Node 3.1: SOFTWARE AND GPU PASS
+  Node 3.2: IN_PROGRESS
+  Node 3.3: TODO
+
+Last Approved Node: 3.1
+Current Node: 3.2
+Next Node: 3.3
+
+Open Validation Items:
+  - Human pose evaluation on real video
+  - Object detection evaluation on real video
+  - Small phone detection accuracy
+  - Side-view occlusion
+  - Company RTSP stream
+  - Real network and camera latency
