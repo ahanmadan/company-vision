@@ -197,3 +197,35 @@ Deferred:
   - ID switch and occlusion measurements
   - Real RTSP integration
   - End-of-phase integrated video test
+
+
+
+
+Company Vision v1.0
+
+Phase 1: PASS
+
+Phase 2:
+  Status: SOFTWARE COMPLETE
+  Physical Camera Validation: DEFERRED
+
+Phase 3:
+  Node 3.1: SOFTWARE AND GPU PASS
+  Node 3.2: SOFTWARE AND GPU PASS
+  Node 3.3: SOFTWARE AND GPU PASS
+  Node 3.4: IN_PROGRESS
+  Node 3.5: TODO
+  Node 3.6: TODO
+
+Last Approved Node: 3.3
+Current Node: 3.4
+Next Node: 3.5
+
+Deferred Validation:
+  - Real webcam test
+  - Real office RTSP test
+  - Real multi-person detection and tracking
+  - Pose/Track association accuracy
+  - ID switches and occlusion
+  - Real-world latency
+  - End-of-Phase-3 integrated video test
