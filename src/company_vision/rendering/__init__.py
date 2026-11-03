@@ -1,0 +1,1 @@
+"""Image rendering components for Company Vision."""
