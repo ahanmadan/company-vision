@@ -174,3 +174,26 @@ Open Validation Items:
   - Side-view occlusion
   - Company RTSP stream
   - Real network and camera latency
+
+
+Company Vision v1.0
+
+Phase 1: PASS
+Phase 2: SOFTWARE COMPLETE
+
+Phase 3:
+  Node 3.1: SOFTWARE AND GPU PASS
+  Node 3.2: SOFTWARE AND GPU PASS
+  Node 3.3: IN_PROGRESS
+  Node 3.4: TODO
+
+Last Approved Node: 3.2
+Current Node: 3.3
+Next Node: 3.4
+
+Deferred:
+  - Real multi-person tracking validation
+  - Side-profile accuracy
+  - ID switch and occlusion measurements
+  - Real RTSP integration
+  - End-of-phase integrated video test
