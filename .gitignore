@@ -40,3 +40,13 @@ Thumbs.db
 *.pt
 *.onnx
 *.engine
+
+# Local benchmark data
+data/samples/phase3_real_test.mp4
+data/samples/phase3_annotations.json
+data/outputs/
+
+# Model weights
+*.pt
+*.onnx
+*.engine
