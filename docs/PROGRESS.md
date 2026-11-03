@@ -86,3 +86,17 @@ Phase 2:
 Last Approved Node: 2.2
 Current Node: 2.3
 Next Node: 2.4
+
+
+
+Phase 2 — Camera Input
+
+Node 2.1: PASS
+Node 2.2: SOFTWARE PASS / HARDWARE DEFERRED
+Node 2.3: SOFTWARE PASS / RTSP INTEGRATION DEFERRED
+Node 2.4: IN_PROGRESS
+Node 2.5: TODO
+
+Last Approved Node: 2.3
+Current Node: 2.4
+Next Node: 2.5
