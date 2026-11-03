@@ -3,8 +3,6 @@ anyio==4.16.0
 certifi==2026.10.23
 charset-normalizer==3.5.2
 colorama==0.4.6
-# Editable Git install with no remote (company-vision==0.1.0)
--e d:\projects\company-vision
 contourpy==1.4.0
 cycler==0.12.1
 filelock==4.2.6
