@@ -122,3 +122,29 @@ Open Validation Items:
   - RTSP disconnection/reconnection
   - Real-time latency
   - Camera codec compatibility
+
+
+
+Company Vision v1.0
+
+Phase 1: PASS
+
+Phase 2:
+  Status: SOFTWARE COMPLETE
+  Physical camera validation: DEFERRED
+
+Phase 3:
+  Node 3.1: IN_PROGRESS
+  Node 3.2: TODO
+  Node 3.3: TODO
+
+Last Approved Node: 2.5
+Current Node: 3.1
+Next Node: 3.2
+
+Deferred:
+  - Physical webcam test
+  - Company RTSP camera test
+  - Real RTSP recovery test
+  - Human pose evaluation with real sample
+  - Side-profile visibility evaluation

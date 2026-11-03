@@ -35,3 +35,8 @@ outputs/
 Thumbs.db
 # Local video samples and outputs
 /data/
+
+# AI model weights
+*.pt
+*.onnx
+*.engine
