@@ -73,3 +73,16 @@ Current Status: IN_PROGRESS
 Next Node: 2.2
 
 Completed Nodes: 5 / 42
+
+Phase 1: PASS
+
+Phase 2:
+  Node 2.1: PASS
+  Node 2.2: SOFTWARE PASS / HARDWARE DEFERRED
+  Node 2.3: IN_PROGRESS
+  Node 2.4: TODO
+  Node 2.5: TODO
+
+Last Approved Node: 2.2
+Current Node: 2.3
+Next Node: 2.4
