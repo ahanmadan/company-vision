@@ -229,3 +229,22 @@ Deferred Validation:
   - ID switches and occlusion
   - Real-world latency
   - End-of-Phase-3 integrated video test
+
+
+Node 3.1: PASS
+Node 3.2: PASS
+Node 3.3: PASS
+Node 3.4: PASS
+Node 3.5: IN_PROGRESS
+Node 3.6: TODO
+
+Current Node: 3.5
+Last Approved Node: 3.4
+Next Node: 3.6
+
+Deferred Validation:
+- Real person detection
+- Real Pose visualization
+- Track ID visualization
+- Real object detection
+- Full phase 3 video benchmark
