@@ -1,30 +1,42 @@
-﻿import numpy as np
+﻿
+import numpy as np
 import pytest
 
-from company_vision.vision.stable_pose_manager import (
-    StablePoseManager,
-)
+from company_vision.vision.stable_pose_manager import StablePoseManager
+
+KEYPOINT_COUNT = 9
 
 
 def sample_detection(x=100):
     box = np.array(
-        [[x, 100, x+180, 500]],
+        [[x, 100, x + 180, 500]],
         dtype=np.float32,
     )
 
-    pose = np.zeros((1, 17, 3), dtype=np.float32)
+    pose = np.zeros((1, KEYPOINT_COUNT, 3), dtype=np.float32)
 
-    for i in range(17):
-        pose[0, i] = [x+50+i, 150+i*10, 0.95]
+    for i in range(KEYPOINT_COUNT):
+        pose[0, i] = [
+            x + 50 + i,
+            150 + i * 10,
+            0.95,
+        ]
 
     scores = np.array([0.95], dtype=np.float32)
 
     return box, pose, scores
 
 
+def empty_detections():
+    return (
+        np.empty((0, 4), dtype=np.float32),
+        np.empty((0, KEYPOINT_COUNT, 3), dtype=np.float32),
+        np.empty((0,), dtype=np.float32),
+    )
+
+
 def test_new_track_requires_confirmation():
     manager = StablePoseManager(confirm_hits=3)
-
     boxes, poses, scores = sample_detection()
 
     assert manager.update(boxes, poses, scores) == []
@@ -41,11 +53,9 @@ def test_stable_id_survives_small_movement():
     manager = StablePoseManager(confirm_hits=1)
 
     boxes, poses, scores = sample_detection()
-
     first = manager.update(boxes, poses, scores)
 
     boxes2, poses2, scores2 = sample_detection(105)
-
     second = manager.update(boxes2, poses2, scores2)
 
     assert first[0]["track_id"] == second[0]["track_id"]
@@ -58,14 +68,9 @@ def test_track_survives_short_occlusion():
     )
 
     boxes, poses, scores = sample_detection()
-
     first = manager.update(boxes, poses, scores)
 
-    missing = manager.update(
-        np.empty((0, 4)),
-        np.empty((0, 17, 3)),
-        np.empty((0,)),
-    )
+    missing = manager.update(*empty_detections())
 
     assert len(missing) == 1
     assert missing[0]["track_id"] == first[0]["track_id"]
@@ -83,11 +88,7 @@ def test_expired_track_is_removed():
     manager.update(boxes, poses, scores)
 
     for _ in range(3):
-        manager.update(
-            np.empty((0, 4)),
-            np.empty((0, 17, 3)),
-            np.empty((0,)),
-        )
+        manager.update(*empty_detections())
 
     assert len(manager.tracks) == 0
 
@@ -97,9 +98,9 @@ def test_invalid_box_rejected():
 
     with pytest.raises(ValueError):
         manager.update(
-            np.array([[100, 100, 50, 50]]),
-            np.zeros((1, 17, 3)),
-            np.array([0.9]),
+            np.array([[100, 100, 50, 50]], dtype=np.float32),
+            np.zeros((1, KEYPOINT_COUNT, 3), dtype=np.float32),
+            np.array([0.9], dtype=np.float32),
         )
 
 
@@ -108,35 +109,38 @@ def test_invalid_pose_shape_rejected():
 
     with pytest.raises(ValueError):
         manager.update(
-            np.array([[10, 10, 100, 100]]),
-            np.zeros((1, 16, 3)),
-            np.array([0.9]),
+            np.array([[10, 10, 100, 100]], dtype=np.float32),
+            np.zeros((1, 8, 3), dtype=np.float32),
+            np.array([0.9], dtype=np.float32),
         )
 
 
 def test_multiple_people_keep_separate_ids():
     manager = StablePoseManager(confirm_hits=1)
 
-    boxes = np.array([
-        [100, 100, 280, 500],
-        [400, 100, 580, 500],
-        [700, 100, 880, 500],
-    ], dtype=np.float32)
+    boxes = np.array(
+        [
+            [100, 100, 280, 500],
+            [400, 100, 580, 500],
+            [700, 100, 880, 500],
+        ],
+        dtype=np.float32,
+    )
 
-    poses = np.zeros((3, 17, 3), dtype=np.float32)
+    poses = np.zeros((3, KEYPOINT_COUNT, 3), dtype=np.float32)
 
     for person in range(3):
-        for i in range(17):
-            poses[person, i] = [
-                boxes[person, 0]+50+i,
-                150+i*10,
+        for joint in range(KEYPOINT_COUNT):
+            poses[person, joint] = [
+                boxes[person, 0] + 50 + joint,
+                150 + joint * 10,
                 0.95,
             ]
 
     result = manager.update(
         boxes,
         poses,
-        np.array([0.95, 0.94, 0.93]),
+        np.array([0.95, 0.94, 0.93], dtype=np.float32),
     )
 
     assert len(result) == 3
@@ -150,6 +154,7 @@ def test_low_keypoint_detection_is_rejected():
     )
 
     boxes, poses, scores = sample_detection()
+
     poses[0, :, 2] = 0.0
     poses[0, :2, 2] = 0.95
 
@@ -180,6 +185,7 @@ def test_missing_keypoint_does_not_become_observed():
 
     assert result[0]["keypoints"][0, 2] < 0.25
 
+
 def test_confirmed_track_recovers_same_id_after_occlusion():
     manager = StablePoseManager(
         confirm_hits=1,
@@ -190,11 +196,7 @@ def test_confirmed_track_recovers_same_id_after_occlusion():
     first = manager.update(boxes, poses, scores)
     original_id = first[0]["track_id"]
 
-    empty = manager.update(
-        np.empty((0, 4), dtype=np.float32),
-        np.empty((0, 17, 3), dtype=np.float32),
-        np.empty((0,), dtype=np.float32),
-    )
+    empty = manager.update(*empty_detections())
 
     assert empty[0]["predicted"] is True
 
@@ -209,15 +211,18 @@ def test_confirmed_track_recovers_same_id_after_occlusion():
 def test_multiple_track_ids_survive_detection_order_change():
     manager = StablePoseManager(confirm_hits=1)
 
-    boxes = np.array([
-        [100, 100, 280, 500],
-        [500, 100, 680, 500],
-    ], dtype=np.float32)
+    boxes = np.array(
+        [
+            [100, 100, 280, 500],
+            [500, 100, 680, 500],
+        ],
+        dtype=np.float32,
+    )
 
-    poses = np.zeros((2, 17, 3), dtype=np.float32)
+    poses = np.zeros((2, KEYPOINT_COUNT, 3), dtype=np.float32)
 
     for person in range(2):
-        for joint in range(17):
+        for joint in range(KEYPOINT_COUNT):
             poses[person, joint] = [
                 boxes[person, 0] + 50 + joint,
                 150 + joint * 10,
@@ -247,4 +252,3 @@ def test_multiple_track_ids_survive_detection_order_change():
     }
 
     assert recovered_ids == original_ids
-
