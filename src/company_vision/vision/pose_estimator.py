@@ -78,7 +78,7 @@ class PoseEstimator:
 
     def __init__(
         self,
-        model_path: str | Path = "yolo26n-pose.pt",
+        model_path: str | Path = "yolo26x-pose.pt",
         *,
         device: str = "cuda:0",
         confidence: float = 0.35,

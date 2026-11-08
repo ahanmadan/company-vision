@@ -1,3 +1,4 @@
+
 import argparse
 import time
 from ctypes import sizeof, string_at
@@ -22,13 +23,45 @@ from ultralytics import YOLO
 
 from company_vision.vision.stable_pose_manager import StablePoseManager
 
-COCO_EDGES = (
-    (5, 6), (5, 7), (7, 9), (6, 8), (8, 10),
-    (5, 11), (6, 12), (11, 12),
-    (11, 13), (13, 15), (12, 14), (14, 16),
-    (0, 1), (0, 2), (1, 3), (2, 4),
+# ============================================================
+# IMPORTANT COCO KEYPOINTS
+# ============================================================
+
+# Head: nose, eyes, ears
+# Shoulders: left and right
+# Elbows: left and right
+
+IMPORTANT_KEYPOINTS = (
+    0,  # Nose
+    1,  # Left Eye
+    2,  # Right Eye
+    3,  # Left Ear
+    4,  # Right Ear
+    5,  # Left Shoulder
+    6,  # Right Shoulder
+    7,  # Left Elbow
+    8,  # Right Elbow
 )
 
+IMPORTANT_EDGES = (
+    # Head
+    (0, 1),
+    (0, 2),
+    (1, 3),
+    (2, 4),
+
+    # Shoulders
+    (5, 6),
+
+    # Arms
+    (5, 7),
+    (6, 8),
+)
+
+
+# ============================================================
+# DRAW STABLE POSE
+# ============================================================
 
 def draw_stable_pose(
     image,
@@ -39,10 +72,14 @@ def draw_stable_pose(
     confidence_threshold,
     states,
 ):
-    """Draw temporally filtered COCO-17 keypoints."""
+    """Draw only head, shoulder and elbow keypoints."""
 
     x1, y1, x2, y2 = map(int, bbox)
-    diagonal = max(1.0, ((x2-x1)**2 + (y2-y1)**2)**0.5)
+
+    diagonal = max(
+        1.0,
+        ((x2-x1)**2 + (y2-y1)**2)**0.5,
+    )
 
     state = states.setdefault(
         track_id,
@@ -65,7 +102,6 @@ def draw_stable_pose(
                     + (current[index, 1] - previous[index, 1]) ** 2
                 ) ** 0.5
 
-                # Reject isolated implausible keypoint jumps.
                 if distance > max(45.0, diagonal * 0.30):
                     current[index] = previous[index]
                     continue
@@ -79,7 +115,11 @@ def draw_stable_pose(
     state["missed"] = 0
 
     cv2.rectangle(
-        image, (x1, y1), (x2, y2), (0, 220, 0), 2
+        image,
+        (x1, y1),
+        (x2, y2),
+        (0, 220, 0),
+        2,
     )
 
     cv2.putText(
@@ -92,7 +132,7 @@ def draw_stable_pose(
         2,
     )
 
-    for first, second in COCO_EDGES:
+    for first, second in IMPORTANT_EDGES:
         a = current[first]
         b = current[second]
 
@@ -102,20 +142,38 @@ def draw_stable_pose(
         ):
             p1 = tuple(np.round(a[:2]).astype(int))
             p2 = tuple(np.round(b[:2]).astype(int))
-            cv2.line(image, p1, p2, (0, 255, 255), 2)
 
-    for point in current:
+            cv2.line(
+                image,
+                p1,
+                p2,
+                (0, 255, 255),
+                2,
+            )
+
+    for index in IMPORTANT_KEYPOINTS:
+        point = current[index]
+
         if point[2] >= confidence_threshold:
             center = tuple(np.round(point[:2]).astype(int))
-            cv2.circle(image, center, 4, (255, 100, 0), -1)
+
+            cv2.circle(
+                image,
+                center,
+                4,
+                (255, 100, 0),
+                -1,
+            )
 
     return image
 
 
-
+# ============================================================
+# DRAW MANAGER TRACKS
+# ============================================================
 
 def draw_manager_tracks(image, person, confidence_threshold):
-    """Draw confirmed tracks without treating predictions as observations."""
+    """Draw confirmed tracks and selected observed keypoints."""
 
     x1, y1, x2, y2 = map(
         int,
@@ -123,9 +181,20 @@ def draw_manager_tracks(image, person, confidence_threshold):
     )
 
     observed = bool(person["observed"])
-    color = (0, 220, 0) if observed else (0, 165, 255)
 
-    cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+    color = (
+        (0, 220, 0)
+        if observed
+        else (0, 165, 255)
+    )
+
+    cv2.rectangle(
+        image,
+        (x1, y1),
+        (x2, y2),
+        color,
+        2,
+    )
 
     label = (
         f"ID {person['track_id']}"
@@ -149,7 +218,8 @@ def draw_manager_tracks(image, person, confidence_threshold):
 
     points = person["keypoints"]
 
-    for first, second in COCO_EDGES:
+    # Draw only important skeleton connections.
+    for first, second in IMPORTANT_EDGES:
         a = points[first]
         b = points[second]
 
@@ -168,7 +238,10 @@ def draw_manager_tracks(image, person, confidence_threshold):
                 2,
             )
 
-    for point in points:
+    # Draw only head, shoulders and elbows.
+    for index in IMPORTANT_KEYPOINTS:
+        point = points[index]
+
         if point[2] >= confidence_threshold:
             center = tuple(np.round(point[:2]).astype(int))
 
@@ -183,7 +256,12 @@ def draw_manager_tracks(image, person, confidence_threshold):
     return image
 
 
+# ============================================================
+# MAIN
+# ============================================================
+
 def main():
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--ip", default="5.202.196.201")
@@ -191,24 +269,62 @@ def main():
     parser.add_argument("--channel", type=int, default=2)
     parser.add_argument("--imgsz", type=int, default=1280)
     parser.add_argument("--conf", type=float, default=0.25)
-    parser.add_argument("--model", type=str, default="yolo26m-pose.pt")
-    parser.add_argument("--tracker", default=None, help=argparse.SUPPRESS)
-    parser.add_argument("--confirm-frames", type=int, default=3)
-    parser.add_argument("--ema-alpha", type=float, default=0.40)
-    parser.add_argument("--keypoint-conf", type=float, default=0.25)
-    parser.add_argument("--max-missed", type=int, default=60)
 
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="yolo26x-pose.pt",
+    )
+
+    parser.add_argument(
+        "--tracker",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+
+    parser.add_argument(
+        "--confirm-frames",
+        type=int,
+        default=3,
+    )
+
+    parser.add_argument(
+        "--ema-alpha",
+        type=float,
+        default=0.40,
+    )
+
+    parser.add_argument(
+        "--keypoint-conf",
+        type=float,
+        default=0.25,
+    )
+
+    parser.add_argument(
+        "--max-missed",
+        type=int,
+        default=60,
+    )
 
     args = parser.parse_args()
+
     if args.confirm_frames < 1:
         parser.error("--confirm-frames must be >= 1")
+
     if not 0.0 < args.ema_alpha <= 1.0:
         parser.error("--ema-alpha must be in (0, 1]")
+
     if not 0.0 < args.keypoint_conf <= 1.0:
         parser.error("--keypoint-conf must be in (0, 1]")
+
+    if not 0.0 < args.conf <= 1.0:
+        parser.error("--conf must be in (0, 1]")
+
+    if args.imgsz < 32:
+        parser.error("--imgsz must be >= 32")
+
     if args.max_missed < 0:
         parser.error("--max-missed must be >= 0")
-
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is not available")
@@ -217,6 +333,13 @@ def main():
     print("Loading YOLO Pose...")
 
     model = YOLO(args.model)
+
+    if model.task != "pose":
+        raise RuntimeError(
+            "Selected model is not a Pose model."
+        )
+
+    print("POSE MODEL:", args.model)
 
     username = input("Camera Username: ").strip()
     password = getpass("Camera Password: ")
@@ -240,6 +363,10 @@ def main():
         "decoded": 0,
         "errors": 0,
     }
+
+    # ========================================================
+    # DECODE CALLBACK
+    # ========================================================
 
     def on_decoded(
         port,
@@ -286,6 +413,10 @@ def main():
             with lock:
                 state["errors"] += 1
 
+    # ========================================================
+    # REAL DATA CALLBACK
+    # ========================================================
+
     def on_real_data(
         real_handle,
         data_type,
@@ -321,12 +452,18 @@ def main():
 
     last_sequence = 0
     processed_frames = 0
+
     inference_times = []
 
     started_at = None
     last_report = time.monotonic()
 
     try:
+
+        # ====================================================
+        # SDK INITIALIZATION
+        # ====================================================
+
         print("\nInitializing Dahua SDK...")
 
         if not sdk.InitEx():
@@ -406,11 +543,14 @@ def main():
 
         print("REALPLAY: PASS")
         print("YOLO POSE: READY")
+        print("ACTIVE KEYPOINTS: HEAD + SHOULDERS + ELBOWS")
+        print("ACTIVE KEYPOINT COUNT: 9")
         print("Waiting for camera frame...")
 
         startup_deadline = time.monotonic() + 15
 
         while time.monotonic() < startup_deadline:
+
             with lock:
                 available = state["latest"] is not None
 
@@ -427,9 +567,14 @@ def main():
             cv2.WINDOW_NORMAL,
         )
 
-        cv2.resizeWindow(window_name, 1280, 720)
+        cv2.resizeWindow(
+            window_name,
+            1280,
+            720,
+        )
 
         started_at = time.monotonic()
+
         pose_manager = StablePoseManager(
             confirm_hits=args.confirm_frames,
             max_missed=args.max_missed,
@@ -442,21 +587,29 @@ def main():
         print("\nLIVE YOLO POSE STARTED")
         print("Press Q to stop.")
 
+        # ====================================================
+        # LIVE PROCESSING LOOP
+        # ====================================================
+
         while True:
 
             with lock:
                 item = state["latest"]
 
             if item is None:
+
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
+
                 continue
 
             sequence, raw, width, height = item
 
             if sequence == last_sequence:
+
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
+
                 time.sleep(0.005)
                 continue
 
@@ -472,10 +625,12 @@ def main():
                 cv2.COLOR_YUV2BGR_I420,
             )
 
+            # =================================================
+            # YOLO26X POSE - FULL FRAME
+            # =================================================
+
             inference_start = time.perf_counter()
 
-            # YOLO performs detection only.
-            # StablePoseManager handles temporal identity association.
             results = model.predict(
                 source=frame,
                 device="cuda:0",
@@ -492,6 +647,7 @@ def main():
             inference_times.append(inference_ms)
 
             result = results[0]
+
             boxes = result.boxes
             keypoints_object = result.keypoints
 
@@ -501,6 +657,7 @@ def main():
                 and keypoints_object.data is not None
                 and len(boxes) > 0
             ):
+
                 coordinates = (
                     boxes.xyxy.detach().cpu().numpy()
                 )
@@ -509,18 +666,28 @@ def main():
                     boxes.conf.detach().cpu().numpy()
                 )
 
+                # Keep the complete 17-point structure internally.
+                # StablePoseManager uses it for association and filtering.
                 poses = (
                     keypoints_object.data.detach().cpu().numpy()
                 )
 
                 if not (
-                    len(coordinates) == len(scores) == len(poses)
+                    len(coordinates)
+                    == len(scores)
+                    == len(poses)
                 ):
                     raise RuntimeError(
                         "YOLO detection and pose counts do not match."
                     )
 
+                if poses.ndim != 3 or poses.shape[1:] != (17, 3):
+                    raise RuntimeError(
+                        "Expected COCO-17 keypoint structure."
+                    )
+
             else:
+
                 coordinates = np.empty(
                     (0, 4),
                     dtype=np.float32,
@@ -536,7 +703,10 @@ def main():
                     dtype=np.float32,
                 )
 
-            # Hungarian assignment + Kalman + adaptive pose filtering.
+            # =================================================
+            # TEMPORAL TRACKING
+            # =================================================
+
             tracked_persons = pose_manager.update(
                 coordinates,
                 poses,
@@ -546,23 +716,35 @@ def main():
             annotated = frame.copy()
 
             person_count = sum(
-                1 for person in tracked_persons
+                1
+                for person in tracked_persons
                 if person["observed"]
             )
 
             predicted_count = sum(
-                1 for person in tracked_persons
+                1
+                for person in tracked_persons
                 if person["predicted"]
             )
 
+            # =================================================
+            # DRAW ONLY 9 IMPORTANT KEYPOINTS
+            # =================================================
+
             for person in tracked_persons:
+
                 annotated = draw_manager_tracks(
                     annotated,
                     person,
                     args.keypoint_conf,
                 )
 
+            # =================================================
+            # PERFORMANCE METRICS
+            # =================================================
+
             elapsed = time.monotonic() - started_at
+
             processed_frames += 1
 
             processing_fps = (
@@ -581,7 +763,8 @@ def main():
 
             cv2.putText(
                 annotated,
-                f"PERSONS: {person_count} | PREDICTED: {predicted_count}",
+                f"PERSONS: {person_count} | "
+                f"PREDICTED: {predicted_count}",
                 (25, 78),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
@@ -591,7 +774,8 @@ def main():
 
             cv2.putText(
                 annotated,
-                f"FPS: {processing_fps:.2f} | INFERENCE: {inference_ms:.1f} ms",
+                f"FPS: {processing_fps:.2f} | "
+                f"INFERENCE: {inference_ms:.1f} ms",
                 (25, 116),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
@@ -599,14 +783,22 @@ def main():
                 2,
             )
 
-            cv2.imshow(window_name, annotated)
+            cv2.imshow(
+                window_name,
+                annotated,
+            )
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
             now = time.monotonic()
 
+            # =================================================
+            # TERMINAL REPORT
+            # =================================================
+
             if now - last_report >= 5:
+
                 with lock:
                     decoded = state["decoded"]
                     packets = state["packets"]
@@ -626,6 +818,7 @@ def main():
         print("\nStopped by user")
 
     finally:
+
         print("\nStopping live processing...")
 
         cv2.destroyAllWindows()
@@ -634,10 +827,14 @@ def main():
             sdk.StopRealPlayEx(play_id)
 
         if free_port is not None:
+
             try:
                 sdk.SetDecCallBack(free_port, None)
+
             except Exception as exc:  # noqa: BLE001
-                print(f"WARNING: SDK callback cleanup failed: {exc}")
+                print(
+                    f"WARNING: SDK callback cleanup failed: {exc}"
+                )
 
             if player_started:
                 sdk.Stop(free_port)
@@ -666,12 +863,18 @@ def main():
         )
 
         print("\n=== LIVE YOLO POSE REPORT ===")
+
         print("PROCESSED FRAMES:", processed_frames)
         print("ELAPSED:", round(elapsed, 2))
+
         print(
             "AVERAGE FPS:",
-            round(processed_frames / max(elapsed, 0.001), 2),
+            round(
+                processed_frames / max(elapsed, 0.001),
+                2,
+            ),
         )
+
         print(
             "AVERAGE INFERENCE MS:",
             round(average_inference, 2),

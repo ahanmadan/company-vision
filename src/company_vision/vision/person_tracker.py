@@ -58,7 +58,7 @@ class PersonTracker:
 
     def __init__(
         self,
-        model_path: str | Path = "yolo26n.pt",
+        model_path: str | Path = "yolo26x.pt",
         *,
         device: str = "cuda:0",
         tracker_config: str = "bytetrack.yaml",
