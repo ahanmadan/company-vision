@@ -1,0 +1,961 @@
+
+import argparse
+import time
+from ctypes import sizeof, string_at
+from getpass import getpass
+from threading import Lock
+
+import cv2
+import numpy as np
+import torch
+from NetSDK.NetSDK import NetClient
+from NetSDK.SDK_Callback import fDecCBFun, fRealDataCallBackEx2
+from NetSDK.SDK_Enum import (
+    EM_LOGIN_SPAC_CAP_TYPE,
+    EM_REALDATA_FLAG,
+    SDK_RealPlayType,
+)
+from NetSDK.SDK_Struct import (
+    NET_IN_LOGIN_WITH_HIGHLEVEL_SECURITY,
+    NET_OUT_LOGIN_WITH_HIGHLEVEL_SECURITY,
+)
+from ultralytics import YOLO
+
+from company_vision.vision.stable_pose_manager import StablePoseManager
+
+COCO_EDGES = (
+    (5, 6), (5, 7), (7, 9), (6, 8), (8, 10),
+    (5, 11), (6, 12), (11, 12),
+    (11, 13), (13, 15), (12, 14), (14, 16),
+    (0, 1), (0, 2), (1, 3), (2, 4),
+)
+
+
+def calculate_iou(box_a, box_b):
+    """Calculate intersection over union for two xyxy boxes."""
+
+    ix1 = max(box_a[0], box_b[0])
+    iy1 = max(box_a[1], box_b[1])
+    ix2 = min(box_a[2], box_b[2])
+    iy2 = min(box_a[3], box_b[3])
+
+    intersection = (
+        max(0.0, ix2 - ix1)
+        * max(0.0, iy2 - iy1)
+    )
+
+    area_a = (
+        max(0.0, box_a[2] - box_a[0])
+        * max(0.0, box_a[3] - box_a[1])
+    )
+
+    area_b = (
+        max(0.0, box_b[2] - box_b[0])
+        * max(0.0, box_b[3] - box_b[1])
+    )
+
+    union = area_a + area_b - intersection
+
+    return intersection / union if union > 0 else 0.0
+
+
+def draw_manager_tracks(image, person, confidence_threshold):
+    """Draw confirmed tracks without treating predictions as observations."""
+
+    x1, y1, x2, y2 = map(
+        int,
+        np.round(person["bbox"]),
+    )
+
+    observed = bool(person["observed"])
+    color = (0, 220, 0) if observed else (0, 165, 255)
+
+    cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+
+    label = (
+        f"ID {person['track_id']}"
+        if observed
+        else f"ID {person['track_id']} | PREDICTED"
+    )
+
+    cv2.putText(
+        image,
+        label,
+        (x1, max(20, y1 - 8)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.65,
+        color,
+        2,
+    )
+
+    # Predicted keypoints must never be displayed as observed.
+    if not observed:
+        return image
+
+    points = person["keypoints"]
+
+    for first, second in COCO_EDGES:
+        a = points[first]
+        b = points[second]
+
+        if (
+            a[2] >= confidence_threshold
+            and b[2] >= confidence_threshold
+        ):
+            p1 = tuple(np.round(a[:2]).astype(int))
+            p2 = tuple(np.round(b[:2]).astype(int))
+
+            cv2.line(
+                image,
+                p1,
+                p2,
+                (0, 255, 255),
+                2,
+            )
+
+    for point in points:
+        if point[2] >= confidence_threshold:
+            center = tuple(np.round(point[:2]).astype(int))
+
+            cv2.circle(
+                image,
+                center,
+                4,
+                (255, 100, 0),
+                -1,
+            )
+
+    return image
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--ip", default="5.202.196.201")
+    parser.add_argument("--port", type=int, default=37777)
+    parser.add_argument("--channel", type=int, default=2)
+    parser.add_argument("--imgsz", type=int, default=1280)
+    parser.add_argument("--conf", type=float, default=0.25)
+
+    parser.add_argument(
+        "--detect-model",
+        default="yolo26x.pt",
+    )
+
+    parser.add_argument(
+        "--pose-model",
+        "--model",
+        dest="pose_model",
+        default="yolo26x-pose.pt",
+    )
+
+    parser.add_argument("--confirm-frames", type=int, default=3)
+    parser.add_argument("--ema-alpha", type=float, default=0.40)
+    parser.add_argument("--keypoint-conf", type=float, default=0.25)
+    parser.add_argument("--max-missed", type=int, default=60)
+
+    args = parser.parse_args()
+
+    if args.confirm_frames < 1:
+        parser.error("--confirm-frames must be >= 1")
+
+    if not 0.0 < args.ema_alpha <= 1.0:
+        parser.error("--ema-alpha must be in (0, 1]")
+
+    if not 0.0 < args.keypoint_conf <= 1.0:
+        parser.error("--keypoint-conf must be in (0, 1]")
+
+    if not 0.0 < args.conf <= 1.0:
+        parser.error("--conf must be in (0, 1]")
+
+    if args.imgsz < 32:
+        parser.error("--imgsz must be >= 32")
+
+    if args.max_missed < 0:
+        parser.error("--max-missed must be >= 0")
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is not available")
+
+    print("GPU:", torch.cuda.get_device_name(0))
+
+    # ============================================================
+    # LOAD YOLO26X DETECTION
+    # ============================================================
+
+    print("Loading YOLO26x Detection...")
+
+    detection_model = YOLO(args.detect_model)
+
+    if detection_model.task != "detect":
+        raise RuntimeError(
+            "Detection model must have detect task."
+        )
+
+    # ============================================================
+    # LOAD YOLO26X POSE
+    # ============================================================
+
+    print("Loading YOLO26x Pose...")
+
+    pose_model = YOLO(args.pose_model)
+
+    if pose_model.task != "pose":
+        raise RuntimeError(
+            "Pose model must have pose task."
+        )
+
+    print("DETECTION MODEL:", args.detect_model)
+    print("POSE MODEL:", args.pose_model)
+
+    username = input("Camera Username: ").strip()
+    password = getpass("Camera Password: ")
+
+    sdk = NetClient()
+
+    initialized = False
+    login_id = 0
+    play_id = 0
+    free_port = None
+
+    stream_open = False
+    player_started = False
+
+    lock = Lock()
+
+    state = {
+        "latest": None,
+        "sequence": 0,
+        "packets": 0,
+        "decoded": 0,
+        "errors": 0,
+    }
+
+    # ============================================================
+    # DAHUA DECODE CALLBACK
+    # ============================================================
+
+    def on_decoded(
+        port,
+        buffer,
+        buffer_size,
+        frame_info,
+        user_data,
+        reserved,
+    ):
+        try:
+            info = frame_info.contents
+
+            if info.nType != 3:
+                return
+
+            width = int(info.nWidth)
+            height = int(info.nHeight)
+
+            if width <= 0 or height <= 0:
+                return
+
+            if width % 2 or height % 2:
+                return
+
+            expected = width * height * 3 // 2
+
+            if buffer_size < expected:
+                return
+
+            raw = string_at(buffer, expected)
+
+            with lock:
+                state["sequence"] += 1
+                state["decoded"] += 1
+
+                state["latest"] = (
+                    state["sequence"],
+                    raw,
+                    width,
+                    height,
+                )
+
+        except Exception:  # noqa: BLE001
+            with lock:
+                state["errors"] += 1
+
+    # ============================================================
+    # DAHUA REAL DATA CALLBACK
+    # ============================================================
+
+    def on_real_data(
+        real_handle,
+        data_type,
+        buffer,
+        buffer_size,
+        param,
+        user_data,
+    ):
+        if buffer_size <= 0:
+            return
+
+        try:
+            accepted = sdk.InputData(
+                free_port,
+                buffer,
+                buffer_size,
+            )
+
+            with lock:
+                if accepted:
+                    state["packets"] += 1
+                else:
+                    state["errors"] += 1
+
+        except Exception:  # noqa: BLE001
+            with lock:
+                state["errors"] += 1
+
+    decoding_callback = fDecCBFun(on_decoded)
+    data_callback = fRealDataCallBackEx2(on_real_data)
+
+    window_name = "Company Vision - Dahua YOLO26x Detect + ROI Pose"
+
+    last_sequence = 0
+    processed_frames = 0
+
+    inference_times = []
+    detection_times = []
+    pose_times = []
+
+    started_at = None
+    last_report = time.monotonic()
+
+    try:
+        # ========================================================
+        # SDK INITIALIZATION
+        # ========================================================
+
+        print("\nInitializing Dahua SDK...")
+
+        if not sdk.InitEx():
+            raise RuntimeError("SDK initialization failed")
+
+        initialized = True
+
+        login_in = NET_IN_LOGIN_WITH_HIGHLEVEL_SECURITY()
+        login_in.dwSize = sizeof(login_in)
+        login_in.szIP = args.ip.encode("ascii")
+        login_in.nPort = args.port
+        login_in.szUserName = username.encode("utf-8")
+        login_in.szPassword = password.encode("utf-8")
+        login_in.emSpecCap = EM_LOGIN_SPAC_CAP_TYPE.TCP
+        login_in.pCapParam = None
+
+        login_out = NET_OUT_LOGIN_WITH_HIGHLEVEL_SECURITY()
+        login_out.dwSize = sizeof(login_out)
+
+        login_id, device_info, error = (
+            sdk.LoginWithHighLevelSecurity(
+                login_in,
+                login_out,
+            )
+        )
+
+        if not login_id:
+            raise RuntimeError(f"Login failed: {error}")
+
+        print("LOGIN: PASS")
+        print("CHANNELS:", device_info.nChanNum)
+
+        if not 1 <= args.channel <= int(device_info.nChanNum):
+            raise ValueError("Invalid channel")
+
+        success, free_port = sdk.GetFreePort()
+
+        if not success:
+            raise RuntimeError("GetFreePort failed")
+
+        if not sdk.OpenStream(free_port):
+            raise RuntimeError("OpenStream failed")
+
+        stream_open = True
+
+        if not sdk.Play(free_port, 0):
+            raise RuntimeError("Decoder Play failed")
+
+        player_started = True
+
+        if not sdk.SetDecCallBack(
+            free_port,
+            decoding_callback,
+        ):
+            raise RuntimeError("Decoder callback failed")
+
+        play_id = sdk.RealPlayEx(
+            login_id,
+            args.channel - 1,
+            0,
+            SDK_RealPlayType.Realplay,
+        )
+
+        if not play_id:
+            raise RuntimeError(
+                "RealPlay failed: "
+                + sdk.GetLastErrorMessage()
+            )
+
+        if not sdk.SetRealDataCallBackEx2(
+            play_id,
+            data_callback,
+            None,
+            EM_REALDATA_FLAG.RAW_DATA,
+        ):
+            raise RuntimeError("Real data callback failed")
+
+        print("REALPLAY: PASS")
+        print("YOLO26x DETECTION: READY")
+        print("YOLO26x POSE: READY")
+        print("POSE MODE: DETECTED PERSON ROIs ONLY")
+        print("Waiting for camera frame...")
+
+        startup_deadline = time.monotonic() + 15
+
+        while time.monotonic() < startup_deadline:
+            with lock:
+                available = state["latest"] is not None
+
+            if available:
+                break
+
+            time.sleep(0.05)
+
+        if not available:
+            raise RuntimeError("No camera frame received")
+
+        cv2.namedWindow(
+            window_name,
+            cv2.WINDOW_NORMAL,
+        )
+
+        cv2.resizeWindow(window_name, 1280, 720)
+
+        started_at = time.monotonic()
+
+        pose_manager = StablePoseManager(
+            confirm_hits=args.confirm_frames,
+            max_missed=args.max_missed,
+            min_keypoints=3,
+            keypoint_conf=args.keypoint_conf,
+            ema_alpha=args.ema_alpha,
+            match_distance=0.85,
+        )
+
+        print("\nLIVE YOLO26X DETECT + ROI POSE STARTED")
+        print("Press Q to stop.")
+
+        # ========================================================
+        # LIVE PROCESSING LOOP
+        # ========================================================
+
+        while True:
+
+            with lock:
+                item = state["latest"]
+
+            if item is None:
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+                continue
+
+            sequence, raw, width, height = item
+
+            if sequence == last_sequence:
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+
+                time.sleep(0.005)
+                continue
+
+            last_sequence = sequence
+
+            yuv = np.frombuffer(
+                raw,
+                dtype=np.uint8,
+            ).reshape((height * 3 // 2, width))
+
+            frame = cv2.cvtColor(
+                yuv,
+                cv2.COLOR_YUV2BGR_I420,
+            )
+
+            frame_height, frame_width = frame.shape[:2]
+
+            # ====================================================
+            # STAGE 1: YOLO26X PERSON DETECTION
+            # ====================================================
+
+            detection_start = time.perf_counter()
+
+            detection_results = detection_model.predict(
+                source=frame,
+                device="cuda:0",
+                imgsz=args.imgsz,
+                conf=args.conf,
+                classes=[0],
+                verbose=False,
+                save=False,
+            )
+
+            detection_ms = (
+                time.perf_counter() - detection_start
+            ) * 1000.0
+
+            detection_result = detection_results[0]
+            detected_boxes = detection_result.boxes
+
+            if detected_boxes is not None and len(detected_boxes) > 0:
+
+                raw_boxes = (
+                    detected_boxes.xyxy.detach().cpu().numpy()
+                )
+
+                raw_scores = (
+                    detected_boxes.conf.detach().cpu().numpy()
+                )
+
+                raw_classes = (
+                    detected_boxes.cls.detach().cpu().numpy()
+                )
+
+            else:
+                raw_boxes = np.empty(
+                    (0, 4),
+                    dtype=np.float32,
+                )
+
+                raw_scores = np.empty(
+                    (0,),
+                    dtype=np.float32,
+                )
+
+                raw_classes = np.empty(
+                    (0,),
+                    dtype=np.float32,
+                )
+
+            # ====================================================
+            # STAGE 2: EXTRACT PERSON ROIs
+            # ====================================================
+
+            coordinates_list = []
+            scores_list = []
+            pose_crops = []
+            crop_offsets = []
+
+            for box, score, class_id in zip(
+                raw_boxes,
+                raw_scores,
+                raw_classes,
+                strict=True,
+            ):
+
+                if int(class_id) != 0:
+                    continue
+
+                x1, y1, x2, y2 = map(
+                    int,
+                    np.round(box),
+                )
+
+                x1 = max(0, min(x1, frame_width - 1))
+                y1 = max(0, min(y1, frame_height - 1))
+                x2 = max(0, min(x2, frame_width))
+                y2 = max(0, min(y2, frame_height))
+
+                box_width = x2 - x1
+                box_height = y2 - y1
+
+                if box_width < 2 or box_height < 2:
+                    continue
+
+                # Add context around each detected person.
+                margin_x = int(box_width * 0.12)
+                margin_y = int(box_height * 0.12)
+
+                crop_x1 = max(0, x1 - margin_x)
+                crop_y1 = max(0, y1 - margin_y)
+
+                crop_x2 = min(
+                    frame_width,
+                    x2 + margin_x,
+                )
+
+                crop_y2 = min(
+                    frame_height,
+                    y2 + margin_y,
+                )
+
+                crop = frame[
+                    crop_y1:crop_y2,
+                    crop_x1:crop_x2,
+                ]
+
+                if crop.size == 0:
+                    continue
+
+                coordinates_list.append(
+                    [x1, y1, x2, y2]
+                )
+
+                scores_list.append(float(score))
+                pose_crops.append(crop)
+
+                crop_offsets.append(
+                    (
+                        crop_x1,
+                        crop_y1,
+                        crop_x2,
+                        crop_y2,
+                    )
+                )
+
+            coordinates = np.asarray(
+                coordinates_list,
+                dtype=np.float32,
+            ).reshape(-1, 4)
+
+            scores = np.asarray(
+                scores_list,
+                dtype=np.float32,
+            )
+
+            poses = np.zeros(
+                (len(pose_crops), 17, 3),
+                dtype=np.float32,
+            )
+
+            # ====================================================
+            # STAGE 3: YOLO26X-POSE ON PERSON ROIs ONLY
+            # ====================================================
+
+            pose_start = time.perf_counter()
+
+            if pose_crops:
+
+                pose_results = pose_model.predict(
+                    source=pose_crops,
+                    device="cuda:0",
+                    imgsz=args.imgsz,
+                    conf=args.conf,
+                    classes=[0],
+                    verbose=False,
+                    save=False,
+                )
+
+                if len(pose_results) != len(pose_crops):
+                    raise RuntimeError(
+                        "Pose result count does not match ROI count."
+                    )
+
+                for roi_index, (
+                    pose_result,
+                    crop_offset,
+                ) in enumerate(
+                    zip(
+                        pose_results,
+                        crop_offsets,
+                        strict=True,
+                    )
+                ):
+
+                    crop_x1, crop_y1, crop_x2, crop_y2 = (
+                        crop_offset
+                    )
+
+                    pose_boxes = pose_result.boxes
+                    keypoints_object = pose_result.keypoints
+
+                    if (
+                        pose_boxes is None
+                        or keypoints_object is None
+                        or keypoints_object.data is None
+                        or len(pose_boxes) == 0
+                    ):
+                        continue
+
+                    local_boxes = (
+                        pose_boxes.xyxy.detach()
+                        .cpu()
+                        .numpy()
+                    )
+
+                    local_scores = (
+                        pose_boxes.conf.detach()
+                        .cpu()
+                        .numpy()
+                    )
+
+                    local_keypoints = (
+                        keypoints_object.data.detach()
+                        .cpu()
+                        .numpy()
+                    )
+
+                    if len(local_boxes) != len(local_keypoints):
+                        raise RuntimeError(
+                            "Pose boxes and keypoint counts do not match."
+                        )
+
+                    # Detection box in the local ROI coordinate system.
+                    roi_box_local = np.array(
+                        [
+                            coordinates[roi_index, 0] - crop_x1,
+                            coordinates[roi_index, 1] - crop_y1,
+                            coordinates[roi_index, 2] - crop_x1,
+                            coordinates[roi_index, 3] - crop_y1,
+                        ],
+                        dtype=np.float32,
+                    )
+
+                    # Select the Pose person with the greatest overlap
+                    # with the original Detection ROI.
+                    best_index = max(
+                        range(len(local_boxes)),
+                        key=lambda index: (
+                            calculate_iou(
+                                roi_box_local,
+                                local_boxes[index],
+                            ),
+                            float(local_scores[index]),
+                        ),
+                    )
+
+                    selected_points = local_keypoints[best_index]
+
+                    if selected_points.shape != (17, 3):
+                        continue
+
+                    if not np.isfinite(selected_points).all():
+                        continue
+
+                    # Restore original full-frame coordinates.
+                    poses[roi_index] = selected_points.copy()
+
+                    poses[roi_index, :, 0] += crop_x1
+                    poses[roi_index, :, 1] += crop_y1
+
+            pose_ms = (
+                time.perf_counter() - pose_start
+            ) * 1000.0
+
+            inference_ms = detection_ms + pose_ms
+
+            inference_times.append(inference_ms)
+            detection_times.append(detection_ms)
+            pose_times.append(pose_ms)
+
+            # ====================================================
+            # STAGE 4: STABLE TRACKING
+            # ====================================================
+
+            tracked_persons = pose_manager.update(
+                coordinates,
+                poses,
+                scores,
+            )
+
+            annotated = frame.copy()
+
+            # ====================================================
+            # STAGE 5: TRACKING AND POSE VISUALIZATION
+            # ====================================================
+
+            person_count = sum(
+                1
+                for person in tracked_persons
+                if person["observed"]
+            )
+
+            predicted_count = sum(
+                1
+                for person in tracked_persons
+                if person["predicted"]
+            )
+
+            for person in tracked_persons:
+                annotated = draw_manager_tracks(
+                    annotated,
+                    person,
+                    args.keypoint_conf,
+                )
+
+            # ====================================================
+            # PERFORMANCE METRICS
+            # ====================================================
+
+            elapsed = time.monotonic() - started_at
+
+            processed_frames += 1
+
+            processing_fps = (
+                processed_frames / max(elapsed, 0.001)
+            )
+
+            cv2.putText(
+                annotated,
+                f"DAHUA LIVE | CHANNEL {args.channel}",
+                (25, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.85,
+                (0, 255, 0),
+                2,
+            )
+
+            cv2.putText(
+                annotated,
+                f"DETECTED: {len(coordinates)} | "
+                f"TRACKED: {person_count} | "
+                f"PREDICTED: {predicted_count}",
+                (25, 78),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.75,
+                (255, 255, 255),
+                2,
+            )
+
+            cv2.putText(
+                annotated,
+                f"FPS: {processing_fps:.2f} | "
+                f"DETECT: {detection_ms:.1f} ms | "
+                f"POSE: {pose_ms:.1f} ms",
+                (25, 116),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 255),
+                2,
+            )
+
+            cv2.imshow(
+                window_name,
+                annotated,
+            )
+
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+            now = time.monotonic()
+
+            # ====================================================
+            # TERMINAL REPORT
+            # ====================================================
+
+            if now - last_report >= 5:
+
+                with lock:
+                    decoded = state["decoded"]
+                    packets = state["packets"]
+
+                print(
+                    f"FPS={processing_fps:.2f} "
+                    f"DECODED={decoded} "
+                    f"PROCESSED={processed_frames} "
+                    f"PACKETS={packets} "
+                    f"DETECTED={len(coordinates)} "
+                    f"TRACKED={person_count} "
+                    f"ROI_POSE={len(pose_crops)} "
+                    f"DETECT_MS={detection_ms:.1f} "
+                    f"POSE_MS={pose_ms:.1f} "
+                    f"INFERENCE={inference_ms:.1f}ms"
+                )
+
+                last_report = now
+
+    except KeyboardInterrupt:
+        print("\nStopped by user")
+
+    finally:
+        print("\nStopping live processing...")
+
+        cv2.destroyAllWindows()
+
+        if play_id:
+            sdk.StopRealPlayEx(play_id)
+
+        if free_port is not None:
+
+            try:
+                sdk.SetDecCallBack(free_port, None)
+
+            except Exception as exc:  # noqa: BLE001
+                print(
+                    f"WARNING: SDK callback cleanup failed: {exc}"
+                )
+
+            if player_started:
+                sdk.Stop(free_port)
+
+            if stream_open:
+                sdk.CloseStream(free_port)
+
+            sdk.ReleasePort(free_port)
+
+        if login_id:
+            sdk.Logout(login_id)
+
+        if initialized:
+            sdk.Cleanup()
+
+        elapsed = (
+            time.monotonic() - started_at
+            if started_at is not None
+            else 0
+        )
+
+        average_inference = (
+            sum(inference_times) / len(inference_times)
+            if inference_times
+            else 0
+        )
+
+        average_detection = (
+            sum(detection_times) / len(detection_times)
+            if detection_times
+            else 0
+        )
+
+        average_pose = (
+            sum(pose_times) / len(pose_times)
+            if pose_times
+            else 0
+        )
+
+        print("\n=== LIVE YOLO26X REPORT ===")
+
+        print("PROCESSED FRAMES:", processed_frames)
+        print("ELAPSED:", round(elapsed, 2))
+
+        print(
+            "AVERAGE FPS:",
+            round(
+                processed_frames / max(elapsed, 0.001),
+                2,
+            ),
+        )
+
+        print(
+            "AVERAGE DETECTION MS:",
+            round(average_detection, 2),
+        )
+
+        print(
+            "AVERAGE POSE MS:",
+            round(average_pose, 2),
+        )
+
+        print(
+            "AVERAGE TOTAL INFERENCE MS:",
+            round(average_inference, 2),
+        )
+
+        print("SDK CLEANUP: COMPLETE")
+
+
+if __name__ == "__main__":
+    main()
