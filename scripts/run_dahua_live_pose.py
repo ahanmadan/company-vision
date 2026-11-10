@@ -1,4 +1,4 @@
-
+﻿
 import argparse
 import time
 from ctypes import sizeof, string_at
@@ -21,7 +21,6 @@ from NetSDK.SDK_Struct import (
 )
 from ultralytics import YOLO
 
-from company_vision.vision.async_pose_pipeline import AsyncPosePipeline
 from company_vision.vision.stable_pose_manager import StablePoseManager
 from company_vision.vision.track_lifecycle_guard import TrackLifecycleGuard
 
@@ -249,11 +248,6 @@ def main():
         help="CUDA inference precision",
     )
     parser.add_argument("--conf", type=float, default=0.30)
-    parser.add_argument(
-        "--async-inference",
-        action="store_true",
-        help="Enable optional Node 4.5 asynchronous inference.",
-    )
 
     parser.add_argument(
         "--model",
@@ -441,11 +435,9 @@ def main():
     window_name = "Company Vision - Dahua Live YOLO Pose"
 
     last_sequence = 0
-    last_processed_sequence = 0
     processed_frames = 0
 
     inference_times = []
-    async_pipeline = None
 
     started_at = None
     last_report = time.monotonic()
@@ -583,18 +575,6 @@ def main():
             new_track_min_conf=0.50,
 )
 
-        if args.async_inference:
-            async_pipeline = AsyncPosePipeline(
-                model=model,
-                imgsz=args.imgsz,
-                conf=args.conf,
-                gpu_precision=args.gpu_precision,
-            )
-            async_pipeline.start()
-            print("NODE 4.5: ASYNC INFERENCE ACTIVE")
-        else:
-            print("NODE 4.5: ORIGINAL SYNC PATH ACTIVE")
-
         print("GPU PRECISION:", args.gpu_precision.upper())
         print("ANNOTATION BUFFER:", "COPY" if args.annotation_copy else "IN_PLACE")
 
@@ -607,200 +587,138 @@ def main():
 
         while True:
 
-            pose_batch = None
-
-            if async_pipeline is not None:
-                async_pipeline.check_error()
-
-                async_result = async_pipeline.poll()
-
-                if async_result is not None:
-                    pose_batch = (
-                        async_result.sequence,
-                        async_result.frame,
-                        async_result.coordinates,
-                        async_result.poses,
-                        async_result.scores,
-                        async_result.inference_ms,
-                    )
-
             with lock:
                 item = state["latest"]
 
-            if item is not None:
-                sequence, raw, width, height, captured_at = item
+            if item is None:
 
-                if sequence > last_sequence:
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
 
-                    frame_age_ms = max(
-                        0.0,
-                        (time.monotonic() - captured_at) * 1000.0,
-                    )
+                continue
+            sequence, raw, width, height, captured_at = item
 
-                    with lock:
-                        state["skipped_frames"] += max(
-                            0, sequence - last_sequence - 1
-                        )
-                        state["capture_samples"] += 1
-                        state["capture_age_sum_ms"] += frame_age_ms
-                        state["capture_age_max_ms"] = max(
-                            state["capture_age_max_ms"],
-                            frame_age_ms,
-                        )
-
-                    last_sequence = sequence
-
-                    yuv = np.frombuffer(
-                        raw,
-                        dtype=np.uint8,
-                    ).reshape((height * 3 // 2, width))
-
-                    frame = cv2.cvtColor(
-                        yuv,
-                        cv2.COLOR_YUV2BGR_I420,
-                    )
-
-                    if async_pipeline is not None:
-
-                        async_pipeline.submit(
-                            sequence,
-                            frame,
-                            captured_at,
-                        )
-
-                    else:
-
-                        inference_start = time.perf_counter()
-
-                        results = model.predict(
-                            source=frame,
-                            device="cuda:0",
-                            quantize=(
-                                16 if args.gpu_precision == "fp16" else 32
-                            ),
-                            imgsz=args.imgsz,
-                            conf=args.conf,
-                            classes=[0],
-                            verbose=False,
-                        )
-
-                        if not results:
-                            raise RuntimeError(
-                                "YOLO returned no results."
-                            )
-
-                        result = results[0]
-                        boxes = result.boxes
-                        keypoints_object = result.keypoints
-
-                        if (
-                            boxes is not None
-                            and keypoints_object is not None
-                            and keypoints_object.data is not None
-                            and len(boxes) > 0
-                        ):
-
-                            coordinates = (
-                                boxes.xyxy.detach().cpu().numpy()
-                            )
-
-                            scores = (
-                                boxes.conf.detach().cpu().numpy()
-                            )
-
-                            coco_poses = (
-                                keypoints_object.data.detach()
-                                .cpu().numpy()
-                            )
-
-                            if (
-                                coco_poses.ndim != 3
-                                or coco_poses.shape[1:] != (17, 3)
-                            ):
-                                raise RuntimeError(
-                                    "Expected COCO-17 keypoint structure."
-                                )
-
-                            poses = coco_poses[
-                                :, IMPORTANT_KEYPOINTS, :
-                            ].astype(np.float32, copy=True)
-
-                            if not (
-                                len(coordinates)
-                                == len(scores)
-                                == len(poses)
-                            ):
-                                raise RuntimeError(
-                                    "Detection/pose count mismatch."
-                                )
-
-                            if poses.shape[1:] != (9, 3):
-                                raise RuntimeError(
-                                    "Expected selected 9-keypoint structure."
-                                )
-
-                        else:
-
-                            coordinates = np.empty(
-                                (0, 4), dtype=np.float32
-                            )
-                            poses = np.empty(
-                                (0, 9, 3), dtype=np.float32
-                            )
-                            scores = np.empty(
-                                (0,), dtype=np.float32
-                            )
-
-                        inference_ms = (
-                            time.perf_counter() - inference_start
-                        ) * 1000.0
-
-                        pose_batch = (
-                            sequence,
-                            frame,
-                            coordinates,
-                            poses,
-                            scores,
-                            inference_ms,
-                        )
-
-            # Poll again to avoid unnecessary frame-delivery delay.
-            if async_pipeline is not None and pose_batch is None:
-
-                async_result = async_pipeline.poll()
-
-                if async_result is not None:
-                    pose_batch = (
-                        async_result.sequence,
-                        async_result.frame,
-                        async_result.coordinates,
-                        async_result.poses,
-                        async_result.scores,
-                        async_result.inference_ms,
-                    )
-
-            if pose_batch is None:
+            if sequence == last_sequence:
 
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
                 time.sleep(0.005)
                 continue
+            frame_age_ms = max(
+                0.0,
+                (time.monotonic() - captured_at) * 1000.0,
+            )
+            with lock:
+                state["skipped_frames"] += max(
+                    0, sequence - last_sequence - 1
+                )
+                state["capture_samples"] += 1
+                state["capture_age_sum_ms"] += frame_age_ms
+                state["capture_age_max_ms"] = max(
+                    state["capture_age_max_ms"], frame_age_ms
+                )
+            last_sequence = sequence
 
-            (
-                sequence,
-                frame,
-                coordinates,
-                poses,
-                scores,
-                inference_ms,
-            ) = pose_batch
+            yuv = np.frombuffer(
+                raw,
+                dtype=np.uint8,
+            ).reshape((height * 3 // 2, width))
 
-            if sequence <= last_processed_sequence:
-                continue
+            frame = cv2.cvtColor(
+                yuv,
+                cv2.COLOR_YUV2BGR_I420,
+            )
 
-            last_processed_sequence = sequence
+            # =================================================
+            # YOLO26X POSE - FULL FRAME
+            # =================================================
+
+            inference_start = time.perf_counter()
+
+            results = model.predict(
+                source=frame,
+                device="cuda:0",
+                quantize=(16 if args.gpu_precision == "fp16" else 32),
+                imgsz=args.imgsz,
+                conf=args.conf,
+                classes=[0],
+                verbose=False,
+            )
+
+            inference_ms = (
+                time.perf_counter() - inference_start
+            ) * 1000
+
             inference_times.append(inference_ms)
+
+            result = results[0]
+
+            boxes = result.boxes
+            keypoints_object = result.keypoints
+
+            if (
+                boxes is not None
+                and keypoints_object is not None
+                and keypoints_object.data is not None
+                and len(boxes) > 0
+            ):
+
+                coordinates = (
+                    boxes.xyxy.detach().cpu().numpy()
+                )
+
+                scores = (
+                    boxes.conf.detach().cpu().numpy()
+                )
+
+                # Convert COCO-17 to the project's selected 9 joints.
+                # StablePoseManager expects (N, 9, 3).
+                coco_poses = (
+                    keypoints_object.data.detach().cpu().numpy()
+                )
+                if (
+                    coco_poses.ndim != 3
+                    or coco_poses.shape[1:] != (17, 3)
+                ):
+                    raise RuntimeError(
+                        "Expected COCO-17 keypoint structure."
+                    )
+
+                poses = coco_poses[
+                    :, IMPORTANT_KEYPOINTS, :
+                ].astype(np.float32, copy=True)
+
+                if not (
+                    len(coordinates)
+                    == len(scores)
+                    == len(poses)
+                ):
+                    raise RuntimeError(
+                        "YOLO detection and pose counts do not match."
+                    )
+
+                if poses.ndim != 3 or poses.shape[1:] != (9, 3):
+                    raise RuntimeError(
+                        "Expected selected 9-keypoint structure."
+                    )
+
+            else:
+
+                coordinates = np.empty(
+                    (0, 4),
+                    dtype=np.float32,
+                )
+
+                poses = np.empty(
+                    (0, 9, 3),
+                    dtype=np.float32,
+                )
+
+                scores = np.empty(
+                    (0,),
+                    dtype=np.float32,
+                )
 
             # =================================================
             # TEMPORAL TRACKING
@@ -926,14 +844,6 @@ def main():
     finally:
 
         print("\nStopping live processing...")
-
-        if async_pipeline is not None:
-            try:
-                async_pipeline.stop(timeout=15)
-                print("ASYNC WORKER: STOPPED")
-                print("ASYNC STATS:", async_pipeline.stats())
-            except Exception as exc:  # noqa: BLE001
-                print(f"WARNING: Async shutdown issue: {exc}")
 
         cv2.destroyAllWindows()
 

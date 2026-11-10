@@ -1,20 +1,21 @@
 ﻿{
-    "node":  "4.5",
-    "baseline_node":  "4.4",
-    "baseline_commit":  "7149b97a1bc7a57d221deb95d7d3a1481c73e010",
-    "benchmark_csv":  null,
-    "repetitions":  2,
-    "duration_per_phase_seconds":  30,
-    "sync_mean_fps":  null,
-    "async_mean_fps":  null,
-    "fps_change_percent":  {
-
-                           },
-    "sync_delivery_p95_ms":  null,
-    "async_delivery_p95_ms":  null,
-    "sync_keypoint_valid_ratio":  null,
-    "async_keypoint_valid_ratio":  null,
-    "keypoint_quality_delta":  0,
-    "performance_candidate":  false,
-    "acceptance":  "REVIEW_REQUIRED"
+  "node": "4.5",
+  "baseline_node": "4.4",
+  "baseline_commit": "57343187d716f195340b812e85a71073e7549594",
+  "benchmark_csv": "reports/node45_live_benchmark_20261110_191104.csv",
+  "repetitions_per_mode": 2,
+  "duration_per_phase_seconds": 30,
+  "sync_mean_fps": 24.917,
+  "async_mean_fps": 24.6075,
+  "fps_change_percent": -1.24,
+  "sync_delivery_p95_ms": 32.0,
+  "async_delivery_p95_ms": 32.0,
+  "sync_keypoint_valid_ratio": 0.79945,
+  "async_keypoint_valid_ratio": 0.7898,
+  "unit_tests": {
+    "passed": 245,
+    "failed": 0
+  },
+  "performance_candidate": false,
+  "acceptance": "FUNCTIONAL_PASS_NO_PERFORMANCE_GAIN"
 }
