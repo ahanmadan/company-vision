@@ -22,6 +22,7 @@ from NetSDK.SDK_Struct import (
 from ultralytics import YOLO
 
 from company_vision.vision.stable_pose_manager import StablePoseManager
+from company_vision.vision.track_lifecycle_guard import TrackLifecycleGuard
 
 # ============================================================
 # IMPORTANT COCO KEYPOINTS
@@ -172,86 +173,52 @@ def draw_stable_pose(
 # DRAW MANAGER TRACKS
 # ============================================================
 
+
 def draw_manager_tracks(image, person, confidence_threshold):
-    """Draw confirmed tracks and selected observed keypoints."""
-
-    x1, y1, x2, y2 = map(
-        int,
-        np.round(person["bbox"]),
-    )
-
-    observed = bool(person["observed"])
-
-    color = (
-        (0, 220, 0)
-        if observed
-        else (0, 165, 255)
-    )
-
-    cv2.rectangle(
-        image,
-        (x1, y1),
-        (x2, y2),
-        color,
-        2,
-    )
-
-    label = (
-        f"ID {person['track_id']}"
-        if observed
-        else f"ID {person['track_id']} | PREDICTED"
-    )
-
-    cv2.putText(
-        image,
-        label,
-        (x1, max(20, y1 - 8)),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.65,
-        color,
-        2,
-    )
-
-    # Never draw predicted keypoints as real observations.
-    if not observed:
+    """Draw observed person box and nine pose keypoints, without ID."""
+    if not person.get("observed", False):
         return image
 
-    points = person["keypoints"]
+    height, width = image.shape[:2]
+    box = np.asarray(person["bbox"], dtype=np.float32)
 
-    # Draw only important skeleton connections.
+    if box.shape != (4,) or not np.isfinite(box).all():
+        return image
+
+    x1, y1, x2, y2 = np.round(box).astype(int)
+    x1 = int(np.clip(x1, 0, width - 1))
+    x2 = int(np.clip(x2, 0, width - 1))
+    y1 = int(np.clip(y1, 0, height - 1))
+    y2 = int(np.clip(y2, 0, height - 1))
+
+    if x2 <= x1 or y2 <= y1:
+        return image
+
+    cv2.rectangle(
+        image, (x1, y1), (x2, y2), (0, 220, 0), 2
+    )
+
+    points = np.asarray(person["keypoints"], dtype=np.float32)
+    if points.shape != (9, 3):
+        return image
+
+    valid = (
+        np.isfinite(points).all(axis=1)
+        & (points[:, 2] >= confidence_threshold)
+    )
+
     for first, second in IMPORTANT_EDGES:
-        a = points[first]
-        b = points[second]
+        if valid[first] and valid[second]:
+            a = tuple(np.round(points[first, :2]).astype(int))
+            b = tuple(np.round(points[second, :2]).astype(int))
+            cv2.line(image, a, b, (0, 255, 255), 2)
 
-        if (
-            a[2] >= confidence_threshold
-            and b[2] >= confidence_threshold
-        ):
-            p1 = tuple(np.round(a[:2]).astype(int))
-            p2 = tuple(np.round(b[:2]).astype(int))
-
-            cv2.line(
-                image,
-                p1,
-                p2,
-                (0, 255, 255),
-                2,
-            )
-
-    # Draw only head, shoulders and elbows.
     for index in IMPORTANT_KEYPOINTS:
-        point = points[index]
-
-        if point[2] >= confidence_threshold:
-            center = tuple(np.round(point[:2]).astype(int))
-
-            cv2.circle(
-                image,
-                center,
-                4,
-                (255, 100, 0),
-                -1,
+        if valid[index]:
+            point = tuple(
+                np.round(points[index, :2]).astype(int)
             )
+            cv2.circle(image, point, 4, (255, 100, 0), -1)
 
     return image
 
@@ -268,7 +235,19 @@ def main():
     parser.add_argument("--port", type=int, default=37777)
     parser.add_argument("--channel", type=int, default=2)
     parser.add_argument("--imgsz", type=int, default=1280)
-    parser.add_argument("--conf", type=float, default=0.25)
+
+    parser.add_argument(
+        "--annotation-copy",
+        action="store_true",
+        help="Copy the decoded frame before drawing (A/B baseline)",
+    )
+    parser.add_argument(
+        "--gpu-precision",
+        choices=("fp16", "fp32"),
+        default="fp16",
+        help="CUDA inference precision",
+    )
+    parser.add_argument("--conf", type=float, default=0.30)
 
     parser.add_argument(
         "--model",
@@ -362,6 +341,10 @@ def main():
         "packets": 0,
         "decoded": 0,
         "errors": 0,
+        "capture_age_sum_ms": 0.0,
+        "capture_age_max_ms": 0.0,
+        "capture_samples": 0,
+        "skipped_frames": 0,
     }
 
     # ========================================================
@@ -395,8 +378,8 @@ def main():
 
             if buffer_size < expected:
                 return
-
             raw = string_at(buffer, expected)
+            captured_at = time.monotonic()
 
             with lock:
                 state["sequence"] += 1
@@ -407,6 +390,7 @@ def main():
                     raw,
                     width,
                     height,
+                    captured_at,
                 )
 
         except Exception:  # noqa: BLE001
@@ -575,6 +559,11 @@ def main():
 
         started_at = time.monotonic()
 
+        track_lifecycle_guard = TrackLifecycleGuard(
+            max_hidden_seconds=0.75,
+            min_confirmed_observations=2,
+        )
+
         pose_manager = StablePoseManager(
             confirm_hits=args.confirm_frames,
             max_missed=args.max_missed,
@@ -582,7 +571,12 @@ def main():
             keypoint_conf=args.keypoint_conf,
             ema_alpha=args.ema_alpha,
             match_distance=0.85,
-        )
+            pose_filter_mode="one_euro",
+            new_track_min_conf=0.50,
+)
+
+        print("GPU PRECISION:", args.gpu_precision.upper())
+        print("ANNOTATION BUFFER:", "COPY" if args.annotation_copy else "IN_PLACE")
 
         print("\nLIVE YOLO POSE STARTED")
         print("Press Q to stop.")
@@ -602,8 +596,7 @@ def main():
                     break
 
                 continue
-
-            sequence, raw, width, height = item
+            sequence, raw, width, height, captured_at = item
 
             if sequence == last_sequence:
 
@@ -612,7 +605,19 @@ def main():
 
                 time.sleep(0.005)
                 continue
-
+            frame_age_ms = max(
+                0.0,
+                (time.monotonic() - captured_at) * 1000.0,
+            )
+            with lock:
+                state["skipped_frames"] += max(
+                    0, sequence - last_sequence - 1
+                )
+                state["capture_samples"] += 1
+                state["capture_age_sum_ms"] += frame_age_ms
+                state["capture_age_max_ms"] = max(
+                    state["capture_age_max_ms"], frame_age_ms
+                )
             last_sequence = sequence
 
             yuv = np.frombuffer(
@@ -634,6 +639,7 @@ def main():
             results = model.predict(
                 source=frame,
                 device="cuda:0",
+                quantize=(16 if args.gpu_precision == "fp16" else 32),
                 imgsz=args.imgsz,
                 conf=args.conf,
                 classes=[0],
@@ -666,11 +672,22 @@ def main():
                     boxes.conf.detach().cpu().numpy()
                 )
 
-                # Keep the complete 17-point structure internally.
-                # StablePoseManager uses it for association and filtering.
-                poses = (
+                # Convert COCO-17 to the project's selected 9 joints.
+                # StablePoseManager expects (N, 9, 3).
+                coco_poses = (
                     keypoints_object.data.detach().cpu().numpy()
                 )
+                if (
+                    coco_poses.ndim != 3
+                    or coco_poses.shape[1:] != (17, 3)
+                ):
+                    raise RuntimeError(
+                        "Expected COCO-17 keypoint structure."
+                    )
+
+                poses = coco_poses[
+                    :, IMPORTANT_KEYPOINTS, :
+                ].astype(np.float32, copy=True)
 
                 if not (
                     len(coordinates)
@@ -681,9 +698,9 @@ def main():
                         "YOLO detection and pose counts do not match."
                     )
 
-                if poses.ndim != 3 or poses.shape[1:] != (17, 3):
+                if poses.ndim != 3 or poses.shape[1:] != (9, 3):
                     raise RuntimeError(
-                        "Expected COCO-17 keypoint structure."
+                        "Expected selected 9-keypoint structure."
                     )
 
             else:
@@ -694,7 +711,7 @@ def main():
                 )
 
                 poses = np.empty(
-                    (0, 17, 3),
+                    (0, 9, 3),
                     dtype=np.float32,
                 )
 
@@ -713,7 +730,14 @@ def main():
                 scores,
             )
 
-            annotated = frame.copy()
+            tracked_persons = track_lifecycle_guard.update(
+                tracked_persons,
+                timestamp=time.monotonic(),
+            )
+
+            annotated = (
+                frame.copy() if args.annotation_copy else frame
+            )
 
             person_count = sum(
                 1
@@ -879,7 +903,23 @@ def main():
             "AVERAGE INFERENCE MS:",
             round(average_inference, 2),
         )
+        with lock:
+            samples = state["capture_samples"]
+            age_sum = state["capture_age_sum_ms"]
+            age_max = state["capture_age_max_ms"]
+            skipped = state["skipped_frames"]
+            decoded_total = state["decoded"]
+            errors_total = state["errors"]
 
+        print("\n=== NODE 4.2 CAPTURE REPORT ===")
+        print("DECODED FRAMES:", decoded_total)
+        print("SKIPPED SEQUENCES:", skipped)
+        print("CAPTURE SAMPLES:", samples)
+        print("FRAME AGE MEAN MS:", round(
+            age_sum / max(samples, 1), 3
+        ))
+        print("FRAME AGE MAX MS:", round(age_max, 3))
+        print("SDK INPUT ERRORS:", errors_total)
         print("SDK CLEANUP: COMPLETE")
 
 

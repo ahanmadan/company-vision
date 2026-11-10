@@ -4,6 +4,8 @@ from math import hypot
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+from company_vision.vision.one_euro_pose_filter import OneEuroPoseFilter
+
 # ============================================================
 # PROJECT KEYPOINT CONTRACT: COCO INDICES 0-8 ONLY
 # ============================================================
@@ -62,6 +64,8 @@ class Track:
             dtype=np.float32,
         )
     )
+
+    one_euro_filter: OneEuroPoseFilter | None = None
 
     hits: int = 1
     missed: int = 0
@@ -167,6 +171,9 @@ class StablePoseManager:
         ema_alpha=0.35,
         process_noise=1.0,
         measurement_noise=4.0,
+        pose_filter_mode='dynamic',
+        pose_fps=25.0,
+        new_track_min_conf=0.50,
     ):
         if confirm_hits < 1 or max_missed < 0:
             raise ValueError("Invalid tracking limits")
@@ -186,6 +193,16 @@ class StablePoseManager:
         if process_noise <= 0 or measurement_noise <= 0:
             raise ValueError("Noise values must be positive")
 
+        if pose_filter_mode not in ('one_euro', 'dynamic'):
+            raise ValueError('Invalid pose_filter_mode')
+        if pose_fps <= 0:
+            raise ValueError('pose_fps must be positive')
+
+        self.pose_filter_mode = pose_filter_mode
+        self.pose_fps = pose_fps
+        if not 0.0 < new_track_min_conf <= 1.0:
+            raise ValueError('Invalid new track confidence')
+        self.new_track_min_conf = new_track_min_conf
         self.confirm_hits = confirm_hits
         self.max_missed = max_missed
         self.min_keypoints = min_keypoints
@@ -706,6 +723,78 @@ class StablePoseManager:
     # CREATE TRACK
     # ========================================================
 
+
+
+    @staticmethod
+    def _has_human_pose_evidence(pose, threshold=0.35, box=None):
+        """Conservative evidence check for new tracks only."""
+        pose = np.asarray(pose, dtype=np.float32)
+
+        if pose.shape != (9, 3):
+            return False
+
+        if not np.isfinite(pose).all():
+            return False
+
+        if box is None:
+            return bool(
+                np.any(pose[:5, 2] >= threshold)
+                and np.any(pose[5:7, 2] >= threshold)
+            )
+
+        box = np.asarray(box, dtype=np.float32)
+
+        if box.shape != (4,) or not np.isfinite(box).all():
+            return False
+
+        x1, y1, x2, y2 = box
+        width = x2 - x1
+        height = y2 - y1
+
+        if width <= 0 or height <= 0:
+            return False
+
+        margin_x = width * 0.12
+        margin_y = height * 0.12
+
+        inside = (
+            (pose[:, 0] >= x1 - margin_x)
+            & (pose[:, 0] <= x2 + margin_x)
+            & (pose[:, 1] >= y1 - margin_y)
+            & (pose[:, 1] <= y2 + margin_y)
+        )
+
+        valid = (pose[:, 2] >= threshold) & inside
+
+        head_indices = np.flatnonzero(valid[:5])
+        shoulder_indices = (
+            np.flatnonzero(valid[5:7]) + 5
+        )
+
+        if not len(head_indices) or not len(shoulder_indices):
+            return False
+
+        # A head landmark should not be substantially
+        # below all visible shoulder landmarks.
+        head_y = float(
+            np.min(pose[head_indices, 1])
+        )
+        shoulder_y = float(
+            np.max(pose[shoulder_indices, 1])
+        )
+
+        # Elbows are intentionally optional.
+        # Preserve partially occluded people.
+        return head_y <= shoulder_y + 0.12 * height
+
+    @staticmethod
+    def _step5_duplicate_guard(box, other_boxes):
+        """Reject only near-identical competing boxes."""
+        for other in other_boxes:
+            if _iou(box, other) >= 0.90:
+                return True
+        return False
+
     def _new_track(
         self,
         box,
@@ -731,7 +820,18 @@ class StablePoseManager:
                 box,
             ),
             last_confidence=float(confidence),
+            one_euro_filter=(
+                OneEuroPoseFilter(
+                    fps=self.pose_fps,
+                    confidence_threshold=self.keypoint_conf,
+                )
+                if self.pose_filter_mode == 'one_euro'
+                else None
+            ),
         )
+
+        if track.one_euro_filter is not None:
+            track.pose = track.one_euro_filter.update(pose)
 
         track.confirmed = (
             self.confirm_hits == 1
@@ -743,7 +843,12 @@ class StablePoseManager:
     # UPDATE
     # ========================================================
 
-    def update(self, boxes, poses, scores):
+    def update(self, boxes, poses, scores, *, dt=None):
+        if dt is not None:
+            dt = float(dt)
+            if not np.isfinite(dt) or dt <= 0:
+                raise ValueError('dt must be finite and positive')
+
         boxes, poses, scores = self._validate(
             boxes,
             poses,
@@ -826,13 +931,17 @@ class StablePoseManager:
                 box,
             )
 
-            filtered_pose, dynamic_weights = (
-                self._dynamic_smoothing(
-                    track,
-                    pose,
-                    box,
+            if track.one_euro_filter is not None:
+                filtered_pose = track.one_euro_filter.update(
+                    pose, dt=dt
                 )
-            )
+                dynamic_weights = self._initial_joint_weights(
+                    pose, box
+                )
+            else:
+                filtered_pose, dynamic_weights = (
+                    self._dynamic_smoothing(track, pose, box)
+                )
 
             track.pose = filtered_pose
             track.joint_weights = dynamic_weights
@@ -895,7 +1004,19 @@ class StablePoseManager:
         # NEW DETECTIONS
         # ----------------------------------------------------
 
-        for detection_index in unmatched_detections:
+        # Step 5: preserve existing matched tracks.
+        # Suppress only near-identical new detections.
+        step5_existing_boxes = [
+            boxes[index]
+            for _, index in matches
+        ]
+        step5_accepted_boxes = []
+
+        for detection_index in sorted(
+            unmatched_detections,
+            key=lambda index: float(scores[index]),
+            reverse=True,
+        ):
             pose = poses[detection_index]
 
             valid = int(
@@ -906,6 +1027,25 @@ class StablePoseManager:
 
             if valid < self.min_keypoints:
                 continue
+
+            if scores[detection_index] < self.new_track_min_conf:
+                continue
+
+            if not self._has_human_pose_evidence(
+                pose,
+                box=boxes[detection_index],
+            ):
+                continue
+
+            if self._step5_duplicate_guard(
+                boxes[detection_index],
+                step5_existing_boxes + step5_accepted_boxes,
+            ):
+                continue
+
+            step5_accepted_boxes.append(
+                boxes[detection_index].copy()
+            )
 
             self._new_track(
                 boxes[detection_index],
