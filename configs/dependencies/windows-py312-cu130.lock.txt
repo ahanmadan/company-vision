@@ -1,4 +1,4 @@
-﻿annotated-types==0.8.0
+annotated-types==0.8.0
 anyio==4.16.0
 certifi==2026.10.23
 charset-normalizer==3.5.2
@@ -19,6 +19,7 @@ lap==0.5.14
 MarkupSafe==3.0.4
 matplotlib==3.11.2
 mpmath==1.3.0
+NetSDK @ file:///C:/Users/Foolad%20VFX/Desktop/General_NetSDK_ChnEng_Python_win64_IS_V3.060.0000003.0.R.251201/dist/NetSDK-2.0.0.1-py3-none-win_amd64.whl#sha256=2310a3cf0cea39e647c91727d68b98ebb388362f8970004fa1ffcd7db1e86504
 networkx==3.7
 numpy==2.5.4
 nvidia-ml-py==13.615.71
@@ -26,11 +27,11 @@ opencv-python==4.14.0.94
 packaging==26.3
 pillow==13.0.0
 pluggy==1.7.0
-polars==2.1.0
 polars-runtime-32==2.1.0
+polars==2.1.0
 psutil==7.2.2
-pydantic==2.14.2
 pydantic-settings==2.16.2
+pydantic==2.14.2
 pydantic_core==2.50.2
 Pygments==2.21.0
 pyparsing==3.3.3
@@ -40,6 +41,7 @@ python-dotenv==1.2.4
 PyYAML==6.0.3
 requests==2.34.2
 ruff==0.17.3
+scipy==1.18.1
 setuptools==78.1.0
 sympy==1.14.0
 torch==2.11.0+cu130
@@ -47,8 +49,8 @@ torchvision==0.26.0+cu130
 typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzdata==2026.6
-ultralytics==8.4.197
 ultralytics-platform==0.1.102
-ultralytics-thop==2.2.4
+ultralytics-thop==2.2.5
+ultralytics==8.4.202
 urllib3==2.8.0
 wheel==0.48.0

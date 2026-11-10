@@ -50,3 +50,45 @@ data/outputs/
 *.pt
 *.onnx
 *.engine
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# Runtime
+runs/
+logs/
+*.log
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Test recordings
+*.mp4
+*.avi
+*.mkv
+
+# Temporary backups
+*.bak
+*.backup
+*.tmp
+
+# Accidental files
+.git.zip
+--channel
+requirements-freeze.tmp

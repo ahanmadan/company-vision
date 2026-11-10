@@ -177,8 +177,8 @@ class VisionPipeline:
     def from_models(
         cls,
         *,
-        pose_model: str = "yolo26n-pose.pt",
-        detection_model: str = "yolo26n.pt",
+        pose_model: str = "yolo26x-pose.pt",
+        detection_model: str = "yolo26x.pt",
         device: str = "cuda:0",
         match_iou: float = 0.3,
     ) -> "VisionPipeline":

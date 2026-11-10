@@ -15,8 +15,8 @@ camera:
 
 models:
   device: "cuda:0"
-  pose_model: "yolo26n-pose.pt"
-  detection_model: "yolo26n.pt"
+  pose_model: "yolo26x-pose.pt"
+  detection_model: "yolo26x.pt"
   pose_confidence: 0.40
   detection_confidence: 0.35
 

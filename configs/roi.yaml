@@ -1,0 +1,19 @@
+﻿roi:
+  upscale: 1.75
+  track_padding: 1.65
+  min_size: 160
+  max_track_rois: 64
+
+tiles:
+  rows: 2
+  columns: 3
+  overlap: 0.20
+  every_n_frames: 5
+
+fusion:
+  nms_threshold: 0.55
+
+# Coordinates are normalized:
+# x1, y1, x2, y2 in the range 0..1.
+# Add calibrated desk regions after reviewing the camera frame.
+desk_rois: []
