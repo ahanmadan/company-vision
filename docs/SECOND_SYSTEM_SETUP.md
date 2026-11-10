@@ -14,7 +14,7 @@
 New-Item -ItemType Directory -Force D:\Projects | Out-Null
 Set-Location D:\Projects
 
-git clone --branch main --single-branch https://github.com/ahanmadan/company-vision.git company-vision
+git clone --branch feature/phase4-node4-5-async-main --single-branch https://github.com/ahanmadan/company-vision.git company-vision
 
 Set-Location D:\Projects\company-vision
 ```
