@@ -1,7 +1,7 @@
 ﻿{
     "node":  "4.5",
     "baseline_node":  "4.4",
-    "baseline_commit":  "57343187d716f195340b812e85a71073e7549594",
+    "baseline_commit":  "7149b97a1bc7a57d221deb95d7d3a1481c73e010",
     "benchmark_csv":  null,
     "repetitions":  2,
     "duration_per_phase_seconds":  30,
