@@ -1,4 +1,4 @@
-﻿
+
 import argparse
 import time
 from ctypes import sizeof, string_at
