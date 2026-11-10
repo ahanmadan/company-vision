@@ -1,0 +1,20 @@
+﻿{
+    "node":  "4.5",
+    "baseline_node":  "4.4",
+    "baseline_commit":  "57343187d716f195340b812e85a71073e7549594",
+    "benchmark_csv":  null,
+    "repetitions":  2,
+    "duration_per_phase_seconds":  30,
+    "sync_mean_fps":  null,
+    "async_mean_fps":  null,
+    "fps_change_percent":  {
+
+                           },
+    "sync_delivery_p95_ms":  null,
+    "async_delivery_p95_ms":  null,
+    "sync_keypoint_valid_ratio":  null,
+    "async_keypoint_valid_ratio":  null,
+    "keypoint_quality_delta":  0,
+    "performance_candidate":  false,
+    "acceptance":  "REVIEW_REQUIRED"
+}
