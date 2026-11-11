@@ -192,3 +192,43 @@ tests/unit/test_behavior_plugin_registry.py
   6. Rule Engine consumes PluginResult and does not execute plugins.
   7. Event lifecycle remains the responsibility of Node 5.6.
 - Consequence: Plugin output schemas and rule configuration must remain explicit and testable.
+
+
+## ADR-012 — Deterministic Behavior Event Lifecycle
+
+- Date: 2026-11-11
+- Status: PROPOSED pending Node 5.6 acceptance
+
+Context:
+Rule Engine produces per-frame RuleEvaluation records.
+A separate component is required to manage persistent event state.
+
+Decision:
+Node 5.6 introduces EventManager.
+
+Event identity:
+camera_id + session_id + rule_id + track_id + start_frame_id.
+
+Lifecycle:
+started, updated, confirmed and ended.
+
+Policy:
+Confirmation and termination frame counts are explicit EventPolicy
+configuration values. No behavior thresholds are introduced.
+
+Evidence:
+unknown and not_applicable are not negative evidence.
+They cannot independently terminate an active event.
+
+Boundaries:
+No database persistence, plugin execution, rule evaluation,
+camera processing or final BehaviorResult formatting.
+
+Compatibility:
+Nodes 5.1-5.5 and Phases 1-4 remain unchanged.
+
+Implementation:
+src/company_vision/behaviors/event_manager.py
+
+Tests:
+tests/unit/test_event_manager.py

@@ -218,3 +218,41 @@ The Rule Engine does not:
 - Generate final BehaviorResult.
 
 Those responsibilities remain in their assigned nodes.
+
+
+<!-- NODE-5.6-EVENT-MANAGER -->
+
+## Node 5.6 — Event Manager
+
+Implementation:
+src/company_vision/behaviors/event_manager.py
+
+Tests:
+tests/unit/test_event_manager.py
+
+Input:
+Sequence[RuleEvaluation]
+
+Output:
+EventTransition containing immutable BehaviorEvent snapshots.
+
+Responsibilities:
+- Start events from triggered rule evaluations.
+- Update existing events without duplicate creation.
+- Confirm events after configured consecutive positive frames.
+- End events after configured consecutive negative frames.
+- Preserve unknown and not_applicable as non-negative evidence.
+- Isolate camera, session, rule and track identities.
+- Support explicit track and session termination.
+
+Lifecycle:
+started -> updated -> confirmed -> updated -> ended
+
+Configuration:
+EventPolicy.confirm_after_triggered_frames
+EventPolicy.end_after_not_triggered_frames
+
+No production behavior thresholds are introduced.
+
+The Event Manager does not execute plugins, evaluate rules,
+persist to a database or generate BehaviorResult.
