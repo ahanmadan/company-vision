@@ -347,3 +347,26 @@ Validation:
 - Pip check: PASS
 
 Next node: 5.4
+
+<!-- NODE-5.4-BEHAVIOR-PLUGIN-REGISTRY -->
+
+## Node 5.4 — BehaviorPlugin Registry
+
+Status: PASS
+
+Implemented:
+- BehaviorPlugin protocol
+- BehaviorPluginContext
+- PluginResult
+- PluginDescriptor
+- BehaviorPluginRegistry
+- Registration and retrieval
+- Enable/disable lifecycle
+- Batch registration
+- Plugin execution and validation
+- Deterministic execution order
+
+Initial plugin identifiers:
+phone_usage, inactivity, gathering.
+
+Next node: 5.5 — Rule Engine
