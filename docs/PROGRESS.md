@@ -252,23 +252,33 @@ Deferred Validation:
 
 ## Phase 5 execution checkpoint — 2026-11-11
 
-Phase 5 approved architecture: seven independent nodes.
+Approved architecture: seven independent nodes.
 
-- Node 5.1: BehaviorInputAdapter
-- Node 5.2: FeatureExtractor
-- Node 5.3: TemporalStateManager
-- Node 5.4: BehaviorPlugin Registry
-- Node 5.5: Rule Engine
-- Node 5.6: Event Manager
-- Node 5.7: BehaviorResult
+- 5.1 BehaviorInputAdapter — PASS
+- 5.2 FeatureExtractor — TODO
+- 5.3 TemporalStateManager — TODO
+- 5.4 BehaviorPlugin Registry — TODO
+- 5.5 Rule Engine — TODO
+- 5.6 Event Manager — TODO
+- 5.7 BehaviorResult — TODO
 
-Initial plugins:
-- PhoneUsagePlugin
-- InactivityPlugin
-- GatheringPlugin
+Node 5.1:
+- Status: PASS
+- Compile: PASS
+- Ruff: PASS
+- Dedicated unit tests: PASS
+- Full project regression: PASS
+- Dependency validation: PASS
+- Evidence: docs/TEST_REPORTS/NODE_5_1_FINAL_YYYYMMDD_HHMMSS.md
 
-Node 5.1 implementation status: IN_PROGRESS
-Automated test evidence: pending execution
-User acceptance: pending
+Current phase: 5
+Last approved node: 5.1
+Current node: null
+Next node: 5.2
 
-No phase 1-4 implementation is modified by this node.
+Compatibility:
+- Phases 1-4 implementation unchanged.
+- Existing FrameResult unchanged.
+- SYNC remains the reference pipeline.
+- No fixed person-count limit.
+- Model weight files are not modified.
