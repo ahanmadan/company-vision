@@ -1,16 +1,16 @@
 from datetime import UTC, datetime
 
 import pytest
+from pydantic import ValidationError
 
 from company_vision.behaviors.feature_extractor import (
     FeatureExtractor,
-    FeatureExtractionError,
 )
 from company_vision.behaviors.schemas import (
     BehaviorFrame,
     BehaviorKeypoint,
-    BehaviorPerson,
     BehaviorObject,
+    BehaviorPerson,
 )
 from company_vision.core.schemas import BoundingBox
 
@@ -61,16 +61,27 @@ def make_person(track_id=1, offset=0, weights=None):
 
 def make_frame(persons=None, objects=None):
 
+    persons = persons or []
+    objects = objects or []
+
+    frame_width = max(
+        1000,
+        max(
+            (int(person.bbox.x2) + 10 for person in persons),
+            default=1000,
+        ),
+    )
+
     return BehaviorFrame(
         camera_id="camera_01",
         session_id="session_01",
         frame_id=100,
         timestamp_utc=datetime.now(UTC),
         monotonic_timestamp=100.5,
-        width=1000,
+        width=frame_width,
         height=600,
-        persons=persons or [],
-        objects=objects or [],
+        persons=persons,
+        objects=objects,
         object_detection_status=(
             "available" if objects else "unknown"
         ),
@@ -393,19 +404,21 @@ def test_wrong_input_type_is_rejected():
 
 def test_zero_bbox_dimensions_are_rejected():
 
-    extractor = FeatureExtractor()
-
-    with pytest.raises(Exception):
-        person = make_person()
-        person.bbox = BoundingBox(
+    with pytest.raises(ValidationError):
+        BoundingBox(
             x1=20,
             y1=10,
             x2=20,
             y2=110,
         )
 
-        extractor.extract(make_frame([person]))
-
+    with pytest.raises(ValidationError):
+        BoundingBox(
+            x1=20,
+            y1=10,
+            x2=100,
+            y2=10,
+        )
 
 def test_quality_summary():
 

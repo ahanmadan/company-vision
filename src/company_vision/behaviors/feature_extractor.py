@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from math import atan2, degrees, hypot, isfinite
-from typing import Mapping
 
 from company_vision.behaviors.schemas import (
     BehaviorFrame,
     BehaviorKeypoint,
-    BehaviorPerson,
     BehaviorObject,
+    BehaviorPerson,
 )
 
 
