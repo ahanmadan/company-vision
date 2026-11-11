@@ -191,16 +191,16 @@ def test_camera_and_session_are_isolated():
     manager = EventManager()
 
     manager.process(
-        [
-            evaluation(1, camera_id="camera-A"),
-            evaluation(1, camera_id="camera-B"),
-        ],
+        [evaluation(1, camera_id="camera-A")],
+        timestamp_utc=timestamp(1),
+    )
+
+    manager.process(
+        [evaluation(1, camera_id="camera-B")],
         timestamp_utc=timestamp(1),
     )
 
     assert manager.active_event_count == 2
-
-
 def test_duplicate_evaluation_is_rejected():
     manager = EventManager()
     item = evaluation(1)
@@ -284,10 +284,12 @@ def test_session_end_ends_only_matching_session():
     manager = EventManager()
 
     manager.process(
-        [
-            evaluation(1, session_id="session-1"),
-            evaluation(1, session_id="session-2"),
-        ],
+        [evaluation(1, session_id="session-1")],
+        timestamp_utc=timestamp(1),
+    )
+
+    manager.process(
+        [evaluation(1, session_id="session-2")],
         timestamp_utc=timestamp(1),
     )
 
@@ -301,8 +303,6 @@ def test_session_end_ends_only_matching_session():
     assert len(ended) == 1
     assert ended[0].event.session_id == "session-1"
     assert manager.active_event_count == 1
-
-
 def test_event_snapshots_are_immutable():
     manager = EventManager()
 
@@ -321,10 +321,12 @@ def test_active_event_filtering():
     manager = EventManager()
 
     manager.process(
-        [
-            evaluation(1, camera_id="camera-A"),
-            evaluation(1, camera_id="camera-B"),
-        ],
+        [evaluation(1, camera_id="camera-A")],
+        timestamp_utc=timestamp(1),
+    )
+
+    manager.process(
+        [evaluation(1, camera_id="camera-B")],
         timestamp_utc=timestamp(1),
     )
 
@@ -332,8 +334,6 @@ def test_active_event_filtering():
 
     assert len(result) == 1
     assert result[0].camera_id == "camera-A"
-
-
 def test_clear_removes_all_state():
     manager = EventManager()
 
