@@ -177,3 +177,18 @@ src/company_vision/behaviors/plugin_registry.py
 
 Related tests:
 tests/unit/test_behavior_plugin_registry.py
+
+## ADR-010 — Rule Engine Evidence Semantics
+
+- Status: ACCEPTANCE PENDING
+- Date: 2026-11-11
+- Context: Plugin evidence may be incomplete or unavailable.
+- Decision:
+  1. Missing evidence must never be converted to negative evidence.
+  2. Unknown and not_applicable remain separate outcomes.
+  3. Person-level evaluation requires an explicitly eligible, observed, non-predicted track.
+  4. Numeric thresholds are supplied by immutable RuleDefinition objects.
+  5. Rule evaluation validates camera/session/frame identity.
+  6. Rule Engine consumes PluginResult and does not execute plugins.
+  7. Event lifecycle remains the responsibility of Node 5.6.
+- Consequence: Plugin output schemas and rule configuration must remain explicit and testable.

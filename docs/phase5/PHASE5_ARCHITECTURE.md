@@ -175,3 +175,46 @@ The registry does not implement behavior thresholds,
 classification rules or event lifecycle.
 
 Those responsibilities remain assigned to subsequent nodes.
+
+<!-- NODE-5.5-RULE-ENGINE -->
+
+## Node 5.5 — Rule Engine
+
+Implementation:
+`src/company_vision/behaviors/rule_engine.py`
+
+Tests:
+`tests/unit/test_rule_engine.py`
+
+Responsibilities:
+- Evaluate plugin evidence against configurable numeric rules.
+- Support gt, gte, lt, lte and eq operators.
+- Preserve unknown and not_applicable states.
+- Validate camera, session and frame identity.
+- Enforce behavior eligibility for person-level rules.
+- Produce immutable RuleEvaluation records.
+
+Plugin observation contract:
+- track_id
+- status
+- metrics
+- confidence
+- evidence
+
+Outcomes:
+- triggered
+- not_triggered
+- unknown
+- not_applicable
+
+No default production thresholds are assumed.
+Thresholds must be supplied through RuleDefinition.
+
+The Rule Engine does not:
+- Modify FeatureExtractor.
+- Modify TemporalStateManager.
+- Register or execute plugins itself.
+- Create or manage events.
+- Generate final BehaviorResult.
+
+Those responsibilities remain in their assigned nodes.
