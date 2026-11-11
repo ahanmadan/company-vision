@@ -91,3 +91,15 @@ Related tests / migrations:
 - Consequences: Each node has an independent contract, tests and acceptance criteria. The next node cannot begin before the previous node passes.
 - Related implementation: `src/company_vision/behaviors/`.
 - Related architecture: `docs/phase5/PHASE5_ARCHITECTURE.md`.
+## ADR-010 — Stateless Geometric Feature Extraction
+
+- Date: 2026-11-11
+- Status: ACCEPTED
+- Context: The behavior engine needs a reusable geometry layer independent of tracking and behavior rules.
+- Decision: Node 5.2 converts BehaviorFrame into immutable FrameFeatures.
+- Weight policy: Explicit keypoint weights are authoritative when supplied; an entirely absent weight map falls back to confidence.
+- Geometry: Coordinates are normalized without clipping or modifying source observations.
+- Boundaries: Temporal history, classification, rules and events remain outside this node.
+- Compatibility: Existing schemas and phases 1-4 remain unchanged.
+- Related implementation: src/company_vision/behaviors/feature_extractor.py
+- Related tests: tests/unit/test_feature_extractor.py
