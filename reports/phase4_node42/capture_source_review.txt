@@ -1,0 +1,312 @@
+﻿===== LINES 310-420 =====
+ 310: 
+ 311:     username = input("Camera Username: ").strip()
+ 312:     password = getpass("Camera Password: ")
+ 313: 
+ 314:     sdk = NetClient()
+ 315: 
+ 316:     initialized = False
+ 317:     login_id = 0
+ 318:     play_id = 0
+ 319:     free_port = None
+ 320: 
+ 321:     stream_open = False
+ 322:     player_started = False
+ 323: 
+ 324:     lock = Lock()
+ 325: 
+ 326:     state = {
+ 327:         "latest": None,
+ 328:         "sequence": 0,
+ 329:         "packets": 0,
+ 330:         "decoded": 0,
+ 331:         "errors": 0,
+ 332:     }
+ 333: 
+ 334:     # ========================================================
+ 335:     # DECODE CALLBACK
+ 336:     # ========================================================
+ 337: 
+ 338:     def on_decoded(
+ 339:         port,
+ 340:         buffer,
+ 341:         buffer_size,
+ 342:         frame_info,
+ 343:         user_data,
+ 344:         reserved,
+ 345:     ):
+ 346:         try:
+ 347:             info = frame_info.contents
+ 348: 
+ 349:             if info.nType != 3:
+ 350:                 return
+ 351: 
+ 352:             width = int(info.nWidth)
+ 353:             height = int(info.nHeight)
+ 354: 
+ 355:             if width <= 0 or height <= 0:
+ 356:                 return
+ 357: 
+ 358:             if width % 2 or height % 2:
+ 359:                 return
+ 360: 
+ 361:             expected = width * height * 3 // 2
+ 362: 
+ 363:             if buffer_size < expected:
+ 364:                 return
+ 365: 
+ 366:             raw = string_at(buffer, expected)
+ 367: 
+ 368:             with lock:
+ 369:                 state["sequence"] += 1
+ 370:                 state["decoded"] += 1
+ 371: 
+ 372:                 state["latest"] = (
+ 373:                     state["sequence"],
+ 374:                     raw,
+ 375:                     width,
+ 376:                     height,
+ 377:                 )
+ 378: 
+ 379:         except Exception:  # noqa: BLE001
+ 380:             with lock:
+ 381:                 state["errors"] += 1
+ 382: 
+ 383:     # ========================================================
+ 384:     # REAL DATA CALLBACK
+ 385:     # ========================================================
+ 386: 
+ 387:     def on_real_data(
+ 388:         real_handle,
+ 389:         data_type,
+ 390:         buffer,
+ 391:         buffer_size,
+ 392:         param,
+ 393:         user_data,
+ 394:     ):
+ 395:         if buffer_size <= 0:
+ 396:             return
+ 397: 
+ 398:         try:
+ 399:             accepted = sdk.InputData(
+ 400:                 free_port,
+ 401:                 buffer,
+ 402:                 buffer_size,
+ 403:             )
+ 404: 
+ 405:             with lock:
+ 406:                 if accepted:
+ 407:                     state["packets"] += 1
+ 408:                 else:
+ 409:                     state["errors"] += 1
+ 410: 
+ 411:         except Exception:  # noqa: BLE001
+ 412:             with lock:
+ 413:                 state["errors"] += 1
+ 414: 
+ 415:     decoding_callback = fDecCBFun(on_decoded)
+ 416:     data_callback = fRealDataCallBackEx2(on_real_data)
+ 417: 
+ 418:     window_name = "Company Vision - Dahua Live YOLO Pose"
+ 419: 
+ 420:     last_sequence = 0
+
+===== LINES 510-630 =====
+ 510: 
+ 511:         print("REALPLAY: PASS")
+ 512:         print("YOLO POSE: READY")
+ 513:         print("ACTIVE KEYPOINTS: HEAD + SHOULDERS + ELBOWS")
+ 514:         print("ACTIVE KEYPOINT COUNT: 9")
+ 515:         print("Waiting for camera frame...")
+ 516: 
+ 517:         startup_deadline = time.monotonic() + 15
+ 518: 
+ 519:         while time.monotonic() < startup_deadline:
+ 520: 
+ 521:             with lock:
+ 522:                 available = state["latest"] is not None
+ 523: 
+ 524:             if available:
+ 525:                 break
+ 526: 
+ 527:             time.sleep(0.05)
+ 528: 
+ 529:         if not available:
+ 530:             raise RuntimeError("No camera frame received")
+ 531: 
+ 532:         cv2.namedWindow(
+ 533:             window_name,
+ 534:             cv2.WINDOW_NORMAL,
+ 535:         )
+ 536: 
+ 537:         cv2.resizeWindow(
+ 538:             window_name,
+ 539:             1280,
+ 540:             720,
+ 541:         )
+ 542: 
+ 543:         started_at = time.monotonic()
+ 544: 
+ 545:         track_lifecycle_guard = TrackLifecycleGuard(
+ 546:             max_hidden_seconds=0.75,
+ 547:             min_confirmed_observations=2,
+ 548:         )
+ 549: 
+ 550:         pose_manager = StablePoseManager(
+ 551:             confirm_hits=args.confirm_frames,
+ 552:             max_missed=args.max_missed,
+ 553:             min_keypoints=3,
+ 554:             keypoint_conf=args.keypoint_conf,
+ 555:             ema_alpha=args.ema_alpha,
+ 556:             match_distance=0.85,
+ 557:             pose_filter_mode="one_euro",
+ 558:             new_track_min_conf=0.50,
+ 559: )
+ 560: 
+ 561:         print("\nLIVE YOLO POSE STARTED")
+ 562:         print("Press Q to stop.")
+ 563: 
+ 564:         # ====================================================
+ 565:         # LIVE PROCESSING LOOP
+ 566:         # ====================================================
+ 567: 
+ 568:         while True:
+ 569: 
+ 570:             with lock:
+ 571:                 item = state["latest"]
+ 572: 
+ 573:             if item is None:
+ 574: 
+ 575:                 if cv2.waitKey(1) & 0xFF == ord("q"):
+ 576:                     break
+ 577: 
+ 578:                 continue
+ 579: 
+ 580:             sequence, raw, width, height = item
+ 581: 
+ 582:             if sequence == last_sequence:
+ 583: 
+ 584:                 if cv2.waitKey(1) & 0xFF == ord("q"):
+ 585:                     break
+ 586: 
+ 587:                 time.sleep(0.005)
+ 588:                 continue
+ 589: 
+ 590:             last_sequence = sequence
+ 591: 
+ 592:             yuv = np.frombuffer(
+ 593:                 raw,
+ 594:                 dtype=np.uint8,
+ 595:             ).reshape((height * 3 // 2, width))
+ 596: 
+ 597:             frame = cv2.cvtColor(
+ 598:                 yuv,
+ 599:                 cv2.COLOR_YUV2BGR_I420,
+ 600:             )
+ 601: 
+ 602:             # =================================================
+ 603:             # YOLO26X POSE - FULL FRAME
+ 604:             # =================================================
+ 605: 
+ 606:             inference_start = time.perf_counter()
+ 607: 
+ 608:             results = model.predict(
+ 609:                 source=frame,
+ 610:                 device="cuda:0",
+ 611:                 imgsz=args.imgsz,
+ 612:                 conf=args.conf,
+ 613:                 classes=[0],
+ 614:                 verbose=False,
+ 615:             )
+ 616: 
+ 617:             inference_ms = (
+ 618:                 time.perf_counter() - inference_start
+ 619:             ) * 1000
+ 620: 
+ 621:             inference_times.append(inference_ms)
+ 622: 
+ 623:             result = results[0]
+ 624: 
+ 625:             boxes = result.boxes
+ 626:             keypoints_object = result.keypoints
+ 627: 
+ 628:             if (
+ 629:                 boxes is not None
+ 630:                 and keypoints_object is not None
+
+===== LINES 680-715 =====
+ 680: 
+ 681:                 poses = np.empty(
+ 682:                     (0, 9, 3),
+ 683:                     dtype=np.float32,
+ 684:                 )
+ 685: 
+ 686:                 scores = np.empty(
+ 687:                     (0,),
+ 688:                     dtype=np.float32,
+ 689:                 )
+ 690: 
+ 691:             # =================================================
+ 692:             # TEMPORAL TRACKING
+ 693:             # =================================================
+ 694: 
+ 695:             tracked_persons = pose_manager.update(
+ 696:                 coordinates,
+ 697:                 poses,
+ 698:                 scores,
+ 699:             )
+ 700: 
+ 701:             tracked_persons = track_lifecycle_guard.update(
+ 702:                 tracked_persons,
+ 703:                 timestamp=time.monotonic(),
+ 704:             )
+ 705: 
+ 706:             annotated = frame.copy()
+ 707: 
+ 708:             person_count = sum(
+ 709:                 1
+ 710:                 for person in tracked_persons
+ 711:                 if person["observed"]
+ 712:             )
+ 713: 
+ 714:             predicted_count = sum(
+ 715:                 1
+
+===== LINES 780-815 =====
+ 780: 
+ 781:             if cv2.waitKey(1) & 0xFF == ord("q"):
+ 782:                 break
+ 783: 
+ 784:             now = time.monotonic()
+ 785: 
+ 786:             # =================================================
+ 787:             # TERMINAL REPORT
+ 788:             # =================================================
+ 789: 
+ 790:             if now - last_report >= 5:
+ 791: 
+ 792:                 with lock:
+ 793:                     decoded = state["decoded"]
+ 794:                     packets = state["packets"]
+ 795: 
+ 796:                 print(
+ 797:                     f"FPS={processing_fps:.2f} "
+ 798:                     f"DECODED={decoded} "
+ 799:                     f"PROCESSED={processed_frames} "
+ 800:                     f"PACKETS={packets} "
+ 801:                     f"PERSONS={person_count} "
+ 802:                     f"INFERENCE={inference_ms:.1f}ms"
+ 803:                 )
+ 804: 
+ 805:                 last_report = now
+ 806: 
+ 807:     except KeyboardInterrupt:
+ 808:         print("\nStopped by user")
+ 809: 
+ 810:     finally:
+ 811: 
+ 812:         print("\nStopping live processing...")
+ 813: 
+ 814:         cv2.destroyAllWindows()
+ 815: 
+

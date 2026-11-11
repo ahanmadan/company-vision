@@ -1,0 +1,2 @@
+﻿mode,repetition,duration_seconds,decoded_frames,submitted_frames,processed_frames,worker_processed,tracking_updates,processed_fps,tracking_fps,source_fps,skipped_sequences,queue_dropped_input,queue_dropped_output,inference_mean_ms,inference_p95_ms,completion_latency_mean_ms,completion_latency_p95_ms,delivery_latency_mean_ms,delivery_latency_p95_ms,detection_total,observed_total,predicted_total,keypoint_valid_ratio,gpu_peak_memory_mb
+sync,1,5.344,133,108,108,108,108,20.21,20.21,24.888,25,0,0,19.94,21.422,23.259,32.0,23.972,32.0,201,187,0,0.8176,301.08

@@ -1,0 +1,52 @@
+{
+  "mode": "wall_clock",
+  "metrics": {
+    "decode": {
+      "count": 2339,
+      "mean_ms": 1.4913476281490794,
+      "p50_ms": 1.4672998804599047,
+      "p95_ms": 1.6346999909728765,
+      "max_ms": 3.39740002527833
+    },
+    "model_predict_wall": {
+      "count": 2338,
+      "mean_ms": 33.446011080711735,
+      "p50_ms": 32.74359996430576,
+      "p95_ms": 33.82669994607568,
+      "max_ms": 1408.3033001516014
+    },
+    "output_conversion": {
+      "count": 2338,
+      "mean_ms": 0.3907663776149688,
+      "p50_ms": 0.3700000233948231,
+      "p95_ms": 0.480300048366189,
+      "max_ms": 1.9051998388022184
+    },
+    "tracking": {
+      "count": 2338,
+      "mean_ms": 0.6239003016054949,
+      "p50_ms": 0.5890000611543655,
+      "p95_ms": 0.834600068628788,
+      "max_ms": 2.437399933114648
+    },
+    "annotation": {
+      "count": 2338,
+      "mean_ms": 1.3269426852227264,
+      "p50_ms": 1.298600109294057,
+      "p95_ms": 1.5384999569505453,
+      "max_ms": 10.213000001385808
+    },
+    "display_and_events": {
+      "count": 2338,
+      "mean_ms": 7.550862958472321,
+      "p50_ms": 7.467200048267841,
+      "p95_ms": 8.043200010433793,
+      "max_ms": 13.111399952322245
+    }
+  },
+  "notes": [
+    "CUDA kernels are not profiled directly",
+    "GPU synchronization is not added",
+    "Timing may include asynchronous GPU operations"
+  ]
+}

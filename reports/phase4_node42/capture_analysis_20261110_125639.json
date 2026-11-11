@@ -1,0 +1,353 @@
+{
+  "node": "4.2",
+  "source": "scripts\\run_dahua_live_pose.py",
+  "source_lines": 877,
+  "functions": [
+    {
+      "name": "draw_stable_pose",
+      "line": 67,
+      "end_line": 169
+    },
+    {
+      "name": "draw_manager_tracks",
+      "line": 177,
+      "end_line": 223
+    },
+    {
+      "name": "main",
+      "line": 230,
+      "end_line": 873
+    },
+    {
+      "name": "on_decoded",
+      "line": 338,
+      "end_line": 381
+    },
+    {
+      "name": "on_real_data",
+      "line": 387,
+      "end_line": 413
+    }
+  ],
+  "findings": {
+    "capture": [
+      {
+        "line": 11,
+        "code": "from NetSDK.NetSDK import NetClient"
+      },
+      {
+        "line": 12,
+        "code": "from NetSDK.SDK_Callback import fDecCBFun, fRealDataCallBackEx2"
+      },
+      {
+        "line": 13,
+        "code": "from NetSDK.SDK_Enum import ("
+      },
+      {
+        "line": 16,
+        "code": "SDK_RealPlayType,"
+      },
+      {
+        "line": 18,
+        "code": "from NetSDK.SDK_Struct import ("
+      },
+      {
+        "line": 329,
+        "code": "\"packets\": 0,"
+      },
+      {
+        "line": 335,
+        "code": "# DECODE CALLBACK"
+      },
+      {
+        "line": 384,
+        "code": "# REAL DATA CALLBACK"
+      },
+      {
+        "line": 407,
+        "code": "state[\"packets\"] += 1"
+      },
+      {
+        "line": 415,
+        "code": "decoding_callback = fDecCBFun(on_decoded)"
+      },
+      {
+        "line": 416,
+        "code": "data_callback = fRealDataCallBackEx2(on_real_data)"
+      },
+      {
+        "line": 418,
+        "code": "window_name = \"Company Vision - Dahua Live YOLO Pose\""
+      },
+      {
+        "line": 434,
+        "code": "print(\"\\nInitializing Dahua SDK...\")"
+      },
+      {
+        "line": 484,
+        "code": "if not sdk.SetDecCallBack("
+      },
+      {
+        "line": 486,
+        "code": "decoding_callback,"
+      },
+      {
+        "line": 488,
+        "code": "raise RuntimeError(\"Decoder callback failed\")"
+      },
+      {
+        "line": 490,
+        "code": "play_id = sdk.RealPlayEx("
+      },
+      {
+        "line": 494,
+        "code": "SDK_RealPlayType.Realplay,"
+      },
+      {
+        "line": 499,
+        "code": "\"RealPlay failed: \""
+      },
+      {
+        "line": 503,
+        "code": "if not sdk.SetRealDataCallBackEx2("
+      },
+      {
+        "line": 505,
+        "code": "data_callback,"
+      },
+      {
+        "line": 509,
+        "code": "raise RuntimeError(\"Real data callback failed\")"
+      },
+      {
+        "line": 511,
+        "code": "print(\"REALPLAY: PASS\")"
+      },
+      {
+        "line": 746,
+        "code": "f\"DAHUA LIVE | CHANNEL {args.channel}\","
+      },
+      {
+        "line": 794,
+        "code": "packets = state[\"packets\"]"
+      },
+      {
+        "line": 800,
+        "code": "f\"PACKETS={packets} \""
+      },
+      {
+        "line": 817,
+        "code": "sdk.StopRealPlayEx(play_id)"
+      },
+      {
+        "line": 822,
+        "code": "sdk.SetDecCallBack(free_port, None)"
+      },
+      {
+        "line": 826,
+        "code": "f\"WARNING: SDK callback cleanup failed: {exc}\""
+      }
+    ],
+    "decode": [
+      {
+        "line": 330,
+        "code": "\"decoded\": 0,"
+      },
+      {
+        "line": 335,
+        "code": "# DECODE CALLBACK"
+      },
+      {
+        "line": 338,
+        "code": "def on_decoded("
+      },
+      {
+        "line": 370,
+        "code": "state[\"decoded\"] += 1"
+      },
+      {
+        "line": 415,
+        "code": "decoding_callback = fDecCBFun(on_decoded)"
+      },
+      {
+        "line": 480,
+        "code": "raise RuntimeError(\"Decoder Play failed\")"
+      },
+      {
+        "line": 488,
+        "code": "raise RuntimeError(\"Decoder callback failed\")"
+      },
+      {
+        "line": 592,
+        "code": "yuv = np.frombuffer("
+      },
+      {
+        "line": 595,
+        "code": ").reshape((height * 3 // 2, width))"
+      },
+      {
+        "line": 597,
+        "code": "frame = cv2.cvtColor("
+      },
+      {
+        "line": 598,
+        "code": "yuv,"
+      },
+      {
+        "line": 599,
+        "code": "cv2.COLOR_YUV2BGR_I420,"
+      },
+      {
+        "line": 793,
+        "code": "decoded = state[\"decoded\"]"
+      },
+      {
+        "line": 798,
+        "code": "f\"DECODED={decoded} \""
+      }
+    ],
+    "queue": [
+      {
+        "line": 6,
+        "code": "from threading import Lock"
+      },
+      {
+        "line": 324,
+        "code": "lock = Lock()"
+      },
+      {
+        "line": 340,
+        "code": "buffer,"
+      },
+      {
+        "line": 341,
+        "code": "buffer_size,"
+      },
+      {
+        "line": 363,
+        "code": "if buffer_size < expected:"
+      },
+      {
+        "line": 366,
+        "code": "raw = string_at(buffer, expected)"
+      },
+      {
+        "line": 368,
+        "code": "with lock:"
+      },
+      {
+        "line": 380,
+        "code": "with lock:"
+      },
+      {
+        "line": 390,
+        "code": "buffer,"
+      },
+      {
+        "line": 391,
+        "code": "buffer_size,"
+      },
+      {
+        "line": 395,
+        "code": "if buffer_size <= 0:"
+      },
+      {
+        "line": 401,
+        "code": "buffer,"
+      },
+      {
+        "line": 402,
+        "code": "buffer_size,"
+      },
+      {
+        "line": 405,
+        "code": "with lock:"
+      },
+      {
+        "line": 412,
+        "code": "with lock:"
+      },
+      {
+        "line": 521,
+        "code": "with lock:"
+      },
+      {
+        "line": 570,
+        "code": "with lock:"
+      },
+      {
+        "line": 592,
+        "code": "yuv = np.frombuffer("
+      },
+      {
+        "line": 792,
+        "code": "with lock:"
+      }
+    ],
+    "timing": [
+      {
+        "line": 426,
+        "code": "last_report = time.monotonic()"
+      },
+      {
+        "line": 517,
+        "code": "startup_deadline = time.monotonic() + 15"
+      },
+      {
+        "line": 519,
+        "code": "while time.monotonic() < startup_deadline:"
+      },
+      {
+        "line": 543,
+        "code": "started_at = time.monotonic()"
+      },
+      {
+        "line": 606,
+        "code": "inference_start = time.perf_counter()"
+      },
+      {
+        "line": 618,
+        "code": "time.perf_counter() - inference_start"
+      },
+      {
+        "line": 703,
+        "code": "timestamp=time.monotonic(),"
+      },
+      {
+        "line": 736,
+        "code": "elapsed = time.monotonic() - started_at"
+      },
+      {
+        "line": 740,
+        "code": "processing_fps = ("
+      },
+      {
+        "line": 767,
+        "code": "f\"FPS: {processing_fps:.2f} | \""
+      },
+      {
+        "line": 784,
+        "code": "now = time.monotonic()"
+      },
+      {
+        "line": 797,
+        "code": "f\"FPS={processing_fps:.2f} \""
+      },
+      {
+        "line": 844,
+        "code": "time.monotonic() - started_at"
+      },
+      {
+        "line": 861,
+        "code": "\"AVERAGE FPS:\","
+      }
+    ]
+  },
+  "baseline": {
+    "fps": 22.11,
+    "decode_mean_ms": 1.49,
+    "inference_mean_ms": 33.45
+  },
+  "status": "analysis_only",
+  "production_modified": false
+}
