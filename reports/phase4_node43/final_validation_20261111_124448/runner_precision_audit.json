@@ -1,0 +1,46 @@
+[
+  {
+    "file": "scripts/run_dahua_live_pose.py",
+    "exists": true,
+    "quantize_references": [
+      {
+        "line": 642,
+        "text": "quantize=(16 if args.gpu_precision == \"fp16\" else 32),"
+      }
+    ],
+    "half_references": []
+  },
+  {
+    "file": "scripts/run_dahua_live_pose_node45.py",
+    "exists": true,
+    "quantize_references": [
+      {
+        "line": 678,
+        "text": "quantize=("
+      }
+    ],
+    "half_references": []
+  },
+  {
+    "file": "scripts/benchmark_node45_live.py",
+    "exists": true,
+    "quantize_references": [
+      {
+        "line": 53,
+        "text": "quantize=(16 if args.gpu_precision == \"fp16\" else 32),"
+      }
+    ],
+    "half_references": []
+  },
+  {
+    "file": "src/company_vision/vision/async_pose_pipeline.py",
+    "exists": true,
+    "quantize_references": [
+      {
+        "line": 160,
+        "text": "quantize=(16 if self.gpu_precision == \"fp16\" else 32),"
+      }
+    ],
+    "half_references": []
+  }
+]
