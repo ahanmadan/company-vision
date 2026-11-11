@@ -370,3 +370,29 @@ Initial plugin identifiers:
 phone_usage, inactivity, gathering.
 
 Next node: 5.5 — Rule Engine
+
+<!-- NODE-5.5-RULE-ENGINE -->
+
+## Node 5.5 — Rule Engine
+
+Status: IN_PROGRESS until acceptance.
+
+Implemented:
+- RuleDefinition
+- RuleEvaluation
+- RuleEngine
+- Numeric threshold operators
+- Plugin evidence validation
+- Track eligibility validation
+- Unknown and not_applicable handling
+- Deterministic evaluation
+- Immutable evaluation output
+
+Acceptance:
+- Dedicated tests: pending
+- Full regression: pending
+- Ruff: pending
+- Compilation: pending
+- Pip check: pending
+
+Next node: 5.6 — Event Manager
