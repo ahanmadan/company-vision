@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from math import isfinite
 from typing import Literal
 
@@ -132,10 +132,11 @@ class BehaviorFrame(BehaviorStrictModel):
 
     object_detection_status: Literal[
         "available",
+        "unknown",
         "not_run",
         "unavailable",
         "error",
-    ] = "not_run"
+    ] = "unknown"
 
     track_lifecycle_events: list[TrackLifecycleSignal] = Field(
         default_factory=list

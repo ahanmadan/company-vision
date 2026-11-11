@@ -1,19 +1,18 @@
-﻿from datetime import UTC, datetime
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
 
+from company_vision.behaviors.input_adapter import (
+    BehaviorInputAdapter,
+    BehaviorInputError,
+)
 from company_vision.core.schemas import (
     BoundingBox,
     FrameResult,
     Keypoint,
     ObjectObservation,
     PersonObservation,
-)
-
-from company_vision.behaviors.input_adapter import (
-    BehaviorInputAdapter,
-    BehaviorInputError,
 )
 
 
@@ -187,7 +186,7 @@ def test_empty_frame_is_valid():
     )
 
     assert result.persons == []
-    assert result.object_detection_status == "not_run"
+    assert result.object_detection_status == "unknown"
 
 
 def test_duplicate_track_ids_are_rejected():
@@ -318,3 +317,35 @@ def test_eligible_person_requires_observed_track():
             height=100,
             persons=[person],
         )
+
+
+def test_empty_frame_result_detection_status_is_unknown():
+    adapter = BehaviorInputAdapter()
+
+    result = adapter.from_frame_result(
+        make_frame(),
+        session_id="session_013",
+    )
+
+    assert result.objects == []
+    assert result.object_detection_status == "unknown"
+
+
+def test_false_string_metadata_is_not_coerced_to_true():
+    adapter = BehaviorInputAdapter()
+
+    result = adapter.from_frame_result(
+        make_frame(),
+        session_id="session_014",
+        track_metadata={
+            1: {
+                "observed": True,
+                "predicted": False,
+                "behavior_eligible": "false",
+            }
+        },
+    )
+
+    assert result.persons[0].observed is True
+    assert result.persons[0].predicted is False
+    assert result.persons[0].behavior_eligible is False

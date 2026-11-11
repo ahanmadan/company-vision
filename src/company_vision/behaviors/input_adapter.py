@@ -1,8 +1,6 @@
-﻿from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
-
-from company_vision.core.schemas import FrameResult
 
 from company_vision.behaviors.schemas import (
     BehaviorFrame,
@@ -10,7 +8,7 @@ from company_vision.behaviors.schemas import (
     BehaviorPerson,
     TrackLifecycleSignal,
 )
-
+from company_vision.core.schemas import FrameResult
 
 DEFAULT_KEYPOINT_NAMES = (
     "nose",
@@ -284,11 +282,9 @@ class BehaviorInputAdapter:
             keypoint_weights=weights,
             observed=_read(item, "observed"),
             predicted=_read(item, "predicted"),
-            behavior_eligible=bool(
-                _read(item, "behavior_eligible", False)
-            ),
+            behavior_eligible=_read(item, "behavior_eligible", False),
             track_lifecycle=_read(item, "track_lifecycle"),
-            missed=int(_read(item, "missed", 0)),
+            missed=_read(item, "missed", 0),
         )
 
     def _object(self, item):
@@ -359,7 +355,7 @@ class BehaviorInputAdapter:
 
         if object_detection_status is None:
             object_detection_status = (
-                "available" if objects else "not_run"
+                "available" if objects else "unknown"
             )
 
         return BehaviorFrame(
@@ -390,7 +386,7 @@ class BehaviorInputAdapter:
         persons: Sequence[Mapping[str, Any]],
         monotonic_timestamp: float | None = None,
         objects: Sequence[Mapping[str, Any]] | None = None,
-        object_detection_status: str = "not_run",
+        object_detection_status: str = "unknown",
         track_lifecycle_events: Sequence[
             TrackLifecycleSignal | Mapping
         ] = (),
