@@ -129,3 +129,51 @@ Related tests / migrations:
 - Compatibility: Existing schemas and phases 1-4 remain unchanged.
 - Related implementation: src/company_vision/behaviors/feature_extractor.py
 - Related tests: tests/unit/test_feature_extractor.py
+
+## ADR-011 — Independent Behavior Plugin Registry
+
+- Date: 2026-11-11
+- Status: ACCEPTED
+
+Context:
+The behavior engine requires independently manageable plugins.
+
+Decision:
+Node 5.4 introduces a structural BehaviorPlugin protocol
+and a thread-safe BehaviorPluginRegistry.
+
+Contract:
+- plugin_id
+- version
+- execute(context)
+- BehaviorPluginContext
+- PluginResult
+
+Registry capabilities:
+- Individual and atomic batch registration
+- Duplicate ID rejection
+- Plugin lookup and removal
+- Enable/disable lifecycle
+- Individual and deterministic batch execution
+- Result identity validation
+- Explicit plugin execution errors
+
+Initial plugin identifiers:
+- phone_usage
+- inactivity
+- gathering
+
+Boundaries:
+- No direct YOLO dependency.
+- No direct camera SDK dependency.
+- No direct tracker dependency.
+- No behavior thresholds in the registry.
+- No event lifecycle in this node.
+
+Rule evaluation remains in Node 5.5.
+
+Related implementation:
+src/company_vision/behaviors/plugin_registry.py
+
+Related tests:
+tests/unit/test_behavior_plugin_registry.py

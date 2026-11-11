@@ -144,3 +144,34 @@ tests/unit/test_temporal_state_manager.py
 Acceptance evidence:
 26 dedicated tests passed.
 Full regression: 308 tests passed.
+
+<!-- NODE-5.4-BEHAVIOR-PLUGIN-REGISTRY -->
+
+## Node 5.4 — BehaviorPlugin Registry
+
+Implementation:
+src/company_vision/behaviors/plugin_registry.py
+
+Tests:
+tests/unit/test_behavior_plugin_registry.py
+
+Plugin interface:
+- plugin_id
+- version
+- execute(context)
+
+Standardized input:
+BehaviorPluginContext
+
+Standardized output:
+PluginResult
+
+Initial managed plugin identifiers:
+- phone_usage
+- inactivity
+- gathering
+
+The registry does not implement behavior thresholds,
+classification rules or event lifecycle.
+
+Those responsibilities remain assigned to subsequent nodes.
