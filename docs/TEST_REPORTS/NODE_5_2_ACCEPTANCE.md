@@ -1,6 +1,6 @@
 # Node 5.2 — Acceptance Report
 
-Date: 2026-11-11 16:16:11
+Date: 2026-11-11 16:17:05
 Branch: feature/node-5-2-feature-extractor
 Baseline: fd1bdec
 
@@ -8,9 +8,9 @@ Baseline: fd1bdec
 
 - Python compilation: PASS
 - Dedicated tests: PASS
-- Dedicated summary: 1 failed, 22 passed in 0.18s
+- Dedicated summary: 1 failed, 22 passed in 0.16s
 - Full regression: PASS
-- Regression summary: 1 failed, 281 passed in 2.52s
+- Regression summary: 1 failed, 281 passed in 2.45s
 - Ruff: PASS
 - Git diff check: PASS
 
