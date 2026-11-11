@@ -332,3 +332,18 @@ Compatibility:
 - Temporal state: not implemented in this node
 - Behavior classification: not implemented in this node
 - Evidence: docs/TEST_REPORTS/NODE_5_2_ACCEPTANCE.md
+
+<!-- NODE-5.3-TEMPORAL-STATE-MANAGER -->
+
+## Node 5.3 — TemporalStateManager
+
+Status: ACCEPTED
+
+Validation:
+- Dedicated tests: 26 passed
+- Full regression: 308 passed
+- Ruff: PASS
+- Compilation: PASS
+- Pip check: PASS
+
+Next node: 5.4
