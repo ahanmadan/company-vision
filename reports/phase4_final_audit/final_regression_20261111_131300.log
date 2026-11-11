@@ -1,0 +1,242 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261111131301
+Username: DESKTOP-7SO2FT5\Foolad VFX
+RunAs User: DESKTOP-7SO2FT5\Foolad VFX
+Configuration Name: 
+Machine: DESKTOP-7SO2FT5 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Process ID: 25440
+PSVersion: 5.1.26100.9711
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9711
+BuildVersion: 10.0.26100.9711
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is reports\phase4_final_audit\final_regression_20261111_131300.log
+PS D:\Projects\company-vision>
+PS D:\Projects\company-vision>
+(.venv) try {
+
+    # ==================================================
+    # 2. FIX SECOND SYSTEM DOCUMENTATION
+    # ==================================================
+
+    Write-Host "`n===== DOCUMENTATION CORRECTION ====="
+
+    @'
+from pathlib import Path
+
+path = Path("docs/SECOND_SYSTEM_SETUP.md")
+content = path.read_text(encoding="utf-8")
+
+old_clone = (
+    "git clone --branch feature/phase4-node4-5-async-main "
+    "--single-branch"
+)
+new_clone = "git clone --branch main --single-branch"
+
+old_runner = (
+    ".\\.venv\\Scripts\\python.exe "
+    "scripts\\run_dahua_live_pose_node45.py --async-inference"
+)
+new_runner = (
+    ".\\.venv\\Scripts\\python.exe "
+    "scripts\\run_dahua_live_pose_node45.py"
+)
+
+if content.count(old_clone) != 1:
+    raise RuntimeError("Clone command mismatch.")
+
+if content.count(old_runner) != 1:
+    raise RuntimeError("Runner command mismatch.")
+
+content = content.replace(old_clone, new_clone)
+content = content.replace(old_runner, new_runner)
+
+path.write_text(content, encoding="utf-8", newline="\n")
+
+print("CLONE BRANCH: main")
+print("REFERENCE RUNNER: SYNC")
+print("DOCUMENTATION: PASS")
+'@ | & $Python -
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Documentation correction failed."
+    }
+
+    # ==================================================
+    # 3. PYTHON SYNTAX
+    # ==================================================
+
+    Write-Host "`n===== PYTHON COMPILE ====="
+
+    & $Python -m compileall -q `
+        src `
+        tests `
+        scripts\run_dahua_live_pose.py `
+        scripts\run_dahua_live_pose_node45.py `
+        scripts\benchmark_node45_live.py
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Python compilation failed."
+    }
+
+    Write-Host "PYTHON COMPILE: PASS"
+
+    # ==================================================
+    # 4. RUFF
+    # ==================================================
+
+    Write-Host "`n===== RUFF ====="
+
+    & $Python -m ruff check `
+        src `
+        tests `
+        scripts\run_dahua_live_pose.py `
+        scripts\run_dahua_live_pose_node45.py `
+        scripts\benchmark_node45_live.py
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Ruff validation failed."
+    }
+
+    Write-Host "RUFF: PASS"
+
+    # ==================================================
+    # 5. COMPLETE PYTEST
+    # ==================================================
+
+    Write-Host "`n===== COMPLETE PROJECT TESTS ====="
+
+    & $Python -m pytest -v
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Pytest failed."
+    }
+
+    Write-Host "PYTEST: PASS"
+
+    # ==================================================
+    # 6. DEPENDENCY VALIDATION
+    # ==================================================
+
+    Write-Host "`n===== PIP CHECK ====="
+
+    & $Python -m pip check
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Dependency validation failed."
+    }
+
+    Write-Host "PIP CHECK: PASS"
+
+    # ==================================================
+    # 7. GPU / CUDA
+    # ==================================================
+
+    Write-Host "`n===== GPU VALIDATION ====="
+
+    @'
+import torch
+
+print("TORCH:", torch.__version__)
+print("CUDA:", torch.version.cuda)
+print("CUDA AVAILABLE:", torch.cuda.is_available())
+
+if not torch.cuda.is_available():
+    raise RuntimeError("CUDA unavailable.")
+
+print("GPU:", torch.cuda.get_device_name(0))
+
+x = torch.randn((512, 512), device="cuda")
+y = x @ x
+torch.cuda.synchronize()
+
+print("GPU COMPUTATION:", "PASS")
+'@ | & $Python -
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "GPU validation failed."
+    }
+
+    # ==================================================
+    # 8. GIT VALIDATION
+    # ==================================================
+
+    Write-Host "`n===== GIT VALIDATION ====="
+
+    git diff --check
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git whitespace validation failed."
+    }
+
+    Write-Host "`n===== SECOND SYSTEM DOCUMENT ====="
+
+    Select-String -Path "docs\SECOND_SYSTEM_SETUP.md" `
+        -Pattern "git clone|run_dahua_live_pose_node45.py"
+
+    Write-Host "`n===== CURRENT BRANCH ====="
+    git branch --show-current
+
+    Write-Host "`n===== CURRENT COMMIT ====="
+    git log -1 --oneline
+
+    Write-Host "`n===== FINAL STATUS ====="
+    git status -sb
+
+    Write-Host "`nALL AUTOMATED VALIDATIONS: PASS" -ForegroundColor Green
+
+}
+finally {
+    Stop-Transcript
+}
+
+===== DOCUMENTATION CORRECTION =====
+
+
+===== PYTHON COMPILE =====
+
+PYTHON COMPILE: PASS
+
+===== RUFF =====
+
+RUFF: PASS
+
+===== COMPLETE PROJECT TESTS =====
+
+PYTEST: PASS
+
+===== PIP CHECK =====
+
+PIP CHECK: PASS
+
+===== GPU VALIDATION =====
+
+
+===== GIT VALIDATION =====
+
+
+===== SECOND SYSTEM DOCUMENT =====
+
+docs\SECOND_SYSTEM_SETUP.md:17:git clone --branch main --single-branch https://github.com/ahanmadan/company-vision.git company-vision
+docs\SECOND_SYSTEM_SETUP.md:56:.\.venv\Scripts\python.exe scripts\run_dahua_live_pose_node45.py
+
+===== CURRENT BRANCH =====
+
+
+===== CURRENT COMMIT =====
+
+
+===== FINAL STATUS =====
+
+
+ALL AUTOMATED VALIDATIONS: PASS
+**********************
+Windows PowerShell transcript end
+End time: 20261111131306
+**********************

@@ -14,7 +14,7 @@
 New-Item -ItemType Directory -Force D:\Projects | Out-Null
 Set-Location D:\Projects
 
-git clone --branch feature/phase4-node4-5-async-main --single-branch https://github.com/ahanmadan/company-vision.git company-vision
+git clone --branch main --single-branch https://github.com/ahanmadan/company-vision.git company-vision
 
 Set-Location D:\Projects\company-vision
 ```
@@ -53,7 +53,7 @@ Obtain yolo26x-pose.pt from an authorized source.
 ## Independent Node 4.5 Runner
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\run_dahua_live_pose_node45.py --async-inference
+.\.venv\Scripts\python.exe scripts\run_dahua_live_pose_node45.py
 ```
 
 ## Benchmark
