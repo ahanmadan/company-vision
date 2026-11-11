@@ -135,3 +135,16 @@
 - سنجش سرعت و دقت روی محیط واقعی انجام شده باشد؛ ادعاهای نامعتبر حذف شوند.
 - قطع دوربین/قطع داده/خطاهای ID مدیریت شده و بازنصب از مستندات موفق باشد.
 - حفاظت از داده و مجوز استفاده از ابزارها پیش از استقرار تأیید شود.
+
+<!-- NODE-5.3-TEMPORAL-STATE-MANAGER -->
+
+### Node 5.3 — TemporalStateManager
+
+- Status: ACCEPTED
+- Component: TemporalStateManager
+- Input: FeatureExtractor output
+- Dedicated tests: 26 passed
+- Full regression: 308 passed
+- Ruff: PASS
+- Compilation: PASS
+- Dependency validation: PASS

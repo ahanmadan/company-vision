@@ -1,4 +1,4 @@
-﻿# PHASE 5 — BEHAVIOR RECOGNITION ENGINE
+# PHASE 5 — BEHAVIOR RECOGNITION ENGINE
 
 ## Approved seven-node structure
 
@@ -127,3 +127,20 @@ Plugin registration belongs to node 5.4.
 Rule evaluation belongs to node 5.5.
 Event lifecycle belongs to node 5.6.
 Final output formatting belongs to node 5.7.
+
+<!-- NODE-5.3-TEMPORAL-STATE-MANAGER -->
+
+## Node 5.3 — TemporalStateManager
+
+Introduces the temporal state management component
+after FeatureExtractor in the Phase 5 behavior pipeline.
+
+Implementation:
+src/company_vision/behaviors/temporal_state_manager.py
+
+Unit tests:
+tests/unit/test_temporal_state_manager.py
+
+Acceptance evidence:
+26 dedicated tests passed.
+Full regression: 308 tests passed.
