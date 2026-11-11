@@ -1,0 +1,53 @@
+{
+  "node": "4.3",
+  "test": "GPU FP16 FP32 validation",
+  "ultralytics": "8.4.202",
+  "torch": "2.11.0+cu130",
+  "cuda": "13.0",
+  "gpu": "NVIDIA GeForce RTX 4070 SUPER",
+  "results": [
+    {
+      "precision": 16,
+      "backend_fp16": true,
+      "warmup_runs": 3,
+      "measured_runs": 5,
+      "latency_mean_ms": 18.39457997120917,
+      "latency_p95_ms": 20.341959968209267,
+      "latency_min_ms": 16.953400103375316,
+      "latency_max_ms": 20.788999972864985,
+      "gpu_peak_memory_mb": 301.51318359375,
+      "detections": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "precision": 32,
+      "backend_fp16": false,
+      "warmup_runs": 3,
+      "measured_runs": 5,
+      "latency_mean_ms": 32.31327994726598,
+      "latency_p95_ms": 34.184839902445674,
+      "latency_min_ms": 31.438899924978614,
+      "latency_max_ms": 34.77739985100925,
+      "gpu_peak_memory_mb": 680.8388671875,
+      "detections": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "status": "PASS"
+    }
+  ],
+  "comparison": {
+    "latency_improvement_percent": 43.07424067990496,
+    "memory_reduction_percent": 55.7144578365097
+  },
+  "overall_status": "PASS"
+}

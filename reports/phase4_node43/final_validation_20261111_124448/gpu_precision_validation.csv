@@ -1,0 +1,3 @@
+﻿precision,backend_fp16,warmup_runs,measured_runs,latency_mean_ms,latency_p95_ms,latency_min_ms,latency_max_ms,gpu_peak_memory_mb,detections,status
+16,True,3,5,18.39457997120917,20.341959968209267,16.953400103375316,20.788999972864985,301.51318359375,"[0, 0, 0, 0, 0]",PASS
+32,False,3,5,32.31327994726598,34.184839902445674,31.438899924978614,34.77739985100925,680.8388671875,"[0, 0, 0, 0, 0]",PASS

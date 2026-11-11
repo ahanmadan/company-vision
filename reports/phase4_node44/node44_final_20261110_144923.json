@@ -1,0 +1,22 @@
+﻿{
+    "node":  "4.4",
+    "branch":  "feature/phase4-node4-4-postprocess-tracking",
+    "decision":  "ACCEPT_IN_PLACE",
+    "copy_mean_fps":  24.4270192726933305,
+    "inplace_mean_fps":  24.932128978875437,
+    "first_gain_percent":  4.195604586340555272742101700,
+    "reverse_gain_percent":  0.0169840763946756631575187600,
+    "overall_gain_percent":  2.067831938654760604802478800,
+    "copy_out_of_range_percent":  3.6152796725784446,
+    "inplace_out_of_range_percent":  4.14300033411293,
+    "speed_pass":  true,
+    "count_guardrail_pass":  true,
+    "visual_stability_confirmed":  true,
+    "note":  "Count guardrail is not frame-labeled accuracy",
+    "reports":  [
+                    "reports\\phase4_node44\\copy_20261110_142237.json",
+                    "reports\\phase4_node44\\inplace_20261110_142237.json",
+                    "reports\\phase4_node44\\reverse_inplace_20261110_144923.json",
+                    "reports\\phase4_node44\\reverse_copy_20261110_144923.json"
+                ]
+}

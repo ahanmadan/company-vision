@@ -1,0 +1,11 @@
+{
+  "mode": "IN_PLACE",
+  "duration": 60.0,
+  "frames": 1500,
+  "fps": 25.0,
+  "inference_ms": 19.32438899654274,
+  "person_counts": {
+    "3": 1495,
+    "2": 5
+  }
+}
