@@ -232,3 +232,13 @@ src/company_vision/behaviors/event_manager.py
 
 Tests:
 tests/unit/test_event_manager.py
+
+## Node 5.7 — Output Contract Decisions
+
+1. BehaviorResult is independent of database and UI.
+2. The output contract is versioned.
+3. Event lifecycle history must be preserved.
+4. Unknown status must not imply event termination.
+5. Rule evaluations and evidence must remain available.
+6. Serialization must reject unsupported component types.
+7. Real-camera accuracy is not established by unit tests.

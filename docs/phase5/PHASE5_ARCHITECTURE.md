@@ -256,3 +256,19 @@ No production behavior thresholds are introduced.
 
 The Event Manager does not execute plugins, evaluate rules,
 persist to a database or generate BehaviorResult.
+
+## Final Output Layer — Node 5.7
+
+BehaviorResult is the canonical output boundary of Phase 5.
+
+It serializes pipeline components into a validated,
+JSON-compatible contract.
+
+The output boundary preserves EventManager lifecycle history
+and RuleEngine evaluation records without inferring event
+termination from an unknown evaluation.
+
+Database persistence and UI rendering are downstream concerns.
+
+Real-world accuracy and operational performance must be
+evaluated through separate camera acceptance tests.

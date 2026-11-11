@@ -169,3 +169,17 @@ Initial plugin identifiers:
 - gathering
 
 Behavior rules and thresholds remain in Node 5.5.
+
+## Node 5.7 — BehaviorResult
+
+Pipeline output is represented by a versioned BehaviorResult.
+
+The output preserves:
+- Camera/session/frame/track identifiers.
+- Explicit behavior status.
+- Event lifecycle transitions.
+- Rule evaluation records.
+- Supporting evidence.
+- Metadata and timezone-aware creation timestamp.
+
+The contract does not depend on database or UI implementations.

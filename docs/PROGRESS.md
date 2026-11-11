@@ -419,3 +419,18 @@ Validation:
 - Explicit track/session termination
 - Deterministic event identity
 - Full regression and static analysis
+
+## Phase 5 — Final Output Contract
+
+Node 5.7 — BehaviorResult:
+- Versioned behavior output contract.
+- Camera, session, frame and track identification.
+- Event lifecycle preservation.
+- Rule evaluation and evidence serialization.
+- Database-independent and UI-independent output.
+- Dedicated and full regression validation.
+
+Phase 5 implementation completion is subject to successful
+Node 5.7 validation and release.
+
+Real-camera accuracy acceptance remains a separate activity.
