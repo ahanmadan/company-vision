@@ -77,3 +77,32 @@ company-vision/
 
 ## ۹. سیاست تغییر معماری
 هر تغییر قرارداد FrameResult یا رابطه پلاگین با هسته، یک ADR جدید در DECISIONS.md، به‌روزرسانی schema_version، تست رگرسیون و ثبت مهاجرت سازگاری می‌خواهد. افزودن behavior plugin نباید نیازمند تغییر CameraSource، PoseDetector، ObjectDetector یا Tracker باشد.
+
+## 10. Phase 5 — Independent Behavior Recognition
+
+The behavior engine consumes validated observation contracts.
+It does not control camera capture, YOLO inference or tracking.
+
+The approved seven-node structure is:
+
+1. BehaviorInputAdapter
+2. FeatureExtractor
+3. TemporalStateManager
+4. BehaviorPlugin Registry
+5. Rule Engine
+6. Event Manager
+7. BehaviorResult
+
+The initial behavior plugins are PhoneUsagePlugin,
+InactivityPlugin and GatheringPlugin.
+
+Node 5.1 introduces an independent BehaviorFrame contract.
+The existing FrameResult contract is not modified.
+
+Session identity and monotonic time must be supplied by the
+upstream orchestration layer. The adapter must not fabricate them.
+
+A person becomes behavior-eligible only when explicit observed
+and lifecycle evidence supports that eligibility.
+
+See `docs/phase5/PHASE5_ARCHITECTURE.md`.

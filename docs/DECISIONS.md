@@ -61,3 +61,18 @@ Rationale:
 Consequences:
 Related tests / migrations:
 ```
+
+## ADR-008 — Independent Behavior Input Contract
+
+- Date: 2026-11-11
+- Status: PROPOSED
+- Context: The behavior engine must not depend on YOLO, camera SDK or tracker internals.
+- Decision: Introduce BehaviorInputAdapter and a versioned BehaviorFrame contract.
+- Input sources: canonical FrameResult and neutral tracking-output records.
+- Identity: preserve camera_id, session_id and track_id; never synthesize identity.
+- Time: preserve UTC timestamp and accept monotonic timestamp only when supplied.
+- Eligibility: predicted or unconfirmed observations are not automatically eligible.
+- Compatibility: do not modify phase 1-4 schemas or tracking algorithms.
+- Consequences: future FeatureExtractor and temporal components consume BehaviorFrame only.
+- Related implementation: `src/company_vision/behaviors/`.
+- Related tests: `tests/unit/test_behavior_input_adapter.py`.
