@@ -248,3 +248,27 @@ Deferred Validation:
 - Track ID visualization
 - Real object detection
 - Full phase 3 video benchmark
+---
+
+## Phase 5 execution checkpoint — 2026-11-11
+
+Phase 5 approved architecture: seven independent nodes.
+
+- Node 5.1: BehaviorInputAdapter
+- Node 5.2: FeatureExtractor
+- Node 5.3: TemporalStateManager
+- Node 5.4: BehaviorPlugin Registry
+- Node 5.5: Rule Engine
+- Node 5.6: Event Manager
+- Node 5.7: BehaviorResult
+
+Initial plugins:
+- PhoneUsagePlugin
+- InactivityPlugin
+- GatheringPlugin
+
+Node 5.1 implementation status: IN_PROGRESS
+Automated test evidence: pending execution
+User acceptance: pending
+
+No phase 1-4 implementation is modified by this node.
