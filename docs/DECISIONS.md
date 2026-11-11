@@ -65,7 +65,7 @@ Related tests / migrations:
 ## ADR-008 — Independent Behavior Input Contract
 
 - Date: 2026-11-11
-- Status: PROPOSED
+- Status: ACCEPTED
 - Context: The behavior engine must not depend on YOLO, camera SDK or tracker internals.
 - Decision: Introduce BehaviorInputAdapter and a versioned BehaviorFrame contract.
 - Input sources: canonical FrameResult and neutral tracking-output records.
@@ -76,3 +76,18 @@ Related tests / migrations:
 - Consequences: future FeatureExtractor and temporal components consume BehaviorFrame only.
 - Related implementation: `src/company_vision/behaviors/`.
 - Related tests: `tests/unit/test_behavior_input_adapter.py`.
+
+## ADR-009 — Seven-Node Independent Behavior Engine
+
+- Date: 2026-11-11
+- Status: ACCEPTED
+- Context: The behavior engine must support independent development and future extension without changing the vision pipeline.
+- Decision: Phase 5 consists of seven independent components: BehaviorInputAdapter, FeatureExtractor, TemporalStateManager, BehaviorPlugin Registry, Rule Engine, Event Manager and BehaviorResult.
+- Plugin policy: PhoneUsagePlugin, InactivityPlugin and GatheringPlugin are plugins managed by the registry, not additional architectural nodes.
+- Input boundary: BehaviorInputAdapter converts validated observations into BehaviorFrame. Existing FrameResult remains unchanged.
+- Temporal policy: Track history is scoped by camera_id, session_id and track_id.
+- Scalability: No fixed person-count limit is introduced.
+- Compatibility: Phases 1-4 remain unchanged. SYNC remains the reference pipeline.
+- Consequences: Each node has an independent contract, tests and acceptance criteria. The next node cannot begin before the previous node passes.
+- Related implementation: `src/company_vision/behaviors/`.
+- Related architecture: `docs/phase5/PHASE5_ARCHITECTURE.md`.
