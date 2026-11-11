@@ -396,3 +396,26 @@ Acceptance:
 - Pip check: pending
 
 Next node: 5.6 — Event Manager
+
+
+# Node 5.6 — Event Manager
+
+Status: IN_PROGRESS pending user acceptance.
+
+Implementation:
+src/company_vision/behaviors/event_manager.py
+
+Tests:
+tests/unit/test_event_manager.py
+
+Input: RuleEvaluation sequence.
+Output: immutable BehaviorEvent lifecycle transitions.
+
+Validation:
+- Event creation and duplicate prevention
+- Configurable confirmation and termination
+- Unknown / not_applicable preservation
+- Camera/session/rule/track isolation
+- Explicit track/session termination
+- Deterministic event identity
+- Full regression and static analysis
