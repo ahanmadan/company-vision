@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, is_dataclass
+from dataclasses import fields, is_dataclass
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Literal
@@ -36,7 +36,12 @@ def serialize_component(value: Any) -> Any:
         return value.model_dump(mode="json")
 
     if is_dataclass(value) and not isinstance(value, type):
-        return serialize_component(asdict(value))
+        return {
+            item.name: serialize_component(
+                getattr(value, item.name)
+            )
+            for item in fields(value)
+        }
 
     if isinstance(value, Mapping):
         return {
